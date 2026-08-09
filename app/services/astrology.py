@@ -31,6 +31,16 @@ Ephemeris
     pyswisseph silently falls back to its built-in Moshier model. That is what
     makes "no data files to download" true, and it also fixes the valid date
     range -- see :data:`_MOSHIER_MIN_JD` / :data:`_MOSHIER_MAX_JD`.
+
+Two deliberate departures from astronomical best practice
+    Both of the following make this service *less* astronomically rigorous and
+    *more* consistent with the Vedic software our users already check their
+    charts against (verified against AstroSage's free kundli, 2026-08-09).
+    They are intentional. Please do not "correct" them back without reading
+    :data:`_MEAN_NODE_RATIONALE` and :data:`_DELTA_T_RATIONALE` first.
+
+    1. Rahu/Ketu use the **mean** lunar node, not the true node.
+    2. Positions are computed **without** the UT->TT (Delta T) correction.
 """
 
 from __future__ import annotations
@@ -39,6 +49,8 @@ import datetime as _dt
 import threading
 from dataclasses import dataclass
 from typing import Any, Final
+
+import swisseph as _swe
 
 from jhora import const as _jhora_const
 from jhora import utils as _jhora_utils
@@ -74,6 +86,46 @@ class CalculationError(AstrologyError):
 AYANAMSA_NAME: Final[str] = "Lahiri"
 _AYANAMSA_MODE: Final[str] = "LAHIRI"
 
+#: WHY WE USE THE MEAN NODE. Rahu and Ketu can be taken as either the *mean*
+#: lunar node (a smoothed, uniformly-moving point) or the *true* node (the
+#: instantaneous osculating one). They sit up to ~16.5 arcminutes apart -- on
+#: this project's reference chart, 12 deg 34' 15" versus 12 deg 17' 46" of Leo.
+#: Mainstream Vedic practice, and every mass-market kundli tool our users will
+#: check against, uses the MEAN node; PyJHora defaults to the TRUE node.
+#: 16.5' is easily enough to move a graha across a pada boundary, which is the
+#: kind of error a user who knows their own chart spots instantly. We therefore
+#: match convention over astronomical purity. This is deliberate: do not switch
+#: to swe.TRUE_NODE to be "more accurate".
+_MEAN_NODE_RATIONALE: Final[str] = (
+    "Rahu/Ketu use swe.MEAN_NODE to match mainstream Vedic software "
+    "(verified against AstroSage, 2026-08-09). The true node sits ~16.5' away."
+)
+
+#: WHY WE DISABLE THE DELTA T CORRECTION. Ephemerides are computed in Terrestrial
+#: Time; converting a civil (UT) birth moment to TT means adding Delta T, which
+#: was ~63 seconds in 1998. ``swe.calc_ut`` does this automatically and is
+#: astronomically correct. Traditional panchanga software -- AstroSage included
+#: -- does not apply it, effectively treating the civil time as ephemeris time.
+#: The gap is negligible for slow bodies but moves the Moon by ~39 arcseconds,
+#: and because the Vimshottari balance is a fraction of the Moon's position
+#: within its nakshatra, that cascades into a ~7-day shift in every dasha
+#: boundary. Users comparing our dasha dates against their existing kundli
+#: would see a week's discrepancy and conclude we are wrong.
+#:
+#: ``swe.set_delta_t_userdef(0.0)`` pins Delta T to zero, which makes
+#: ``calc_ut`` behave exactly like ``calc``. This is the documented pyswisseph
+#: override and it reaches PyJHora's internal ``calc_ut`` calls without
+#: patching or forking the library. Verified: it reproduces AstroSage's Moon
+#: to 0.8 arcseconds. This is deliberate: do not remove it to be "more correct".
+_DELTA_T_RATIONALE: Final[str] = (
+    "Delta T pinned to zero so civil time is treated as ephemeris time, "
+    "matching traditional panchanga software. Without this, dasha boundaries "
+    "land ~7 days away from what users see elsewhere."
+)
+
+#: Fixed Delta T value, in days, handed to swisseph. Zero means "no UT->TT shift".
+_DELTA_T_DAYS: Final[float] = 0.0
+
 #: Valid Julian Day range of pyswisseph's Moshier model. These are the bounds
 #: swisseph itself reports ("outside Moshier planet range 625000.50 ..
 #: 2818000.50"); beyond them it tries to open .se1 files that we do not ship.
@@ -95,6 +147,11 @@ _MAX_YEAR: Final[int] = 2999
 PLANET_NAMES: Final[tuple[str, ...]] = (
     "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu",
 )
+
+#: Chart indices of the lunar nodes, whose positions we override -- see
+#: :data:`_MEAN_NODE_RATIONALE`.
+_RAHU_INDEX: Final[int] = PLANET_NAMES.index("Rahu")
+_KETU_INDEX: Final[int] = PLANET_NAMES.index("Ketu")
 
 #: Rashis in zodiacal order, index 0 == Aries, matching PyJHora's rasi index.
 SIGN_NAMES: Final[tuple[str, ...]] = (
@@ -253,6 +310,51 @@ def _nakshatra_and_pada(absolute_longitude: float) -> tuple[str, int]:
     return NAKSHATRA_NAMES[index], int(pada)
 
 
+def _mean_node_longitude(jd_local: float, place: Any) -> float:
+    """Sidereal longitude of Rahu (the ascending lunar node), mean not true.
+
+    PyJHora *appears* to expose a switch for this -- ``const.set_node_mode()``
+    flips ``const._RAHU`` between ``swe.TRUE_NODE`` and ``swe.MEAN_NODE``. It
+    does not work once the library is loaded: ``drik._sidereal_planet_list`` is
+    built at import time and captures the old ``const._RAHU`` as a dictionary
+    *key*, so flipping the constant afterwards changes nothing. Verified
+    empirically -- calling ``set_node_mode(False)`` and recomputing moved Rahu
+    by 0.0 arcseconds. Its own docstring ("call this ONCE at process start")
+    concedes the limitation, and relying on import ordering to get a correct
+    chart is exactly the kind of fragility that already bit us once with
+    PyJHora's leaked ``year_duration`` global.
+
+    So we compute the node ourselves. We deliberately reuse
+    ``drik.PLANET_FLAGS`` rather than composing our own flag set, so the node
+    is computed under byte-identical conditions to the other seven bodies
+    (same ephemeris, same sidereal mode, same FLG_TRUEPOS convention).
+
+    See :data:`_MEAN_NODE_RATIONALE` for why mean rather than true.
+    """
+    jd_utc = _jhora_utils.julian_day_utc(jd_local, place)
+    values, _retflag = _swe.calc_ut(jd_utc, _swe.MEAN_NODE, _drik.PLANET_FLAGS)
+    longitude = float(values[0]) % 360.0
+    if not 0.0 <= longitude < 360.0:
+        raise CalculationError(
+            f"mean node longitude {longitude} is outside 0..360"
+        )
+    return longitude
+
+
+def _node_rows(jd_local: float, place: Any) -> dict[int, tuple[int, float]]:
+    """Rahu and Ketu as ``chart index -> (sign, degrees into sign)``.
+
+    Ketu is always exactly opposite Rahu, so it is derived rather than fetched;
+    this also matches PyJHora, which never asks swisseph for Ketu directly.
+    """
+    rahu = _mean_node_longitude(jd_local, place)
+    ketu = (rahu + 180.0) % 360.0
+    return {
+        _RAHU_INDEX: (int(rahu // 30.0), rahu % 30.0),
+        _KETU_INDEX: (int(ketu // 30.0), ketu % 30.0),
+    }
+
+
 def _whole_sign_house(planet_sign: int, ascendant_sign: int) -> int:
     """House number 1..12 under the whole-sign system.
 
@@ -397,10 +499,15 @@ def calculate_chart(birth: BirthData, as_of: _dt.date | None = None) -> dict[str
         # Re-assert every time: this is process-global state that any other
         # caller (or PyJHora itself) may have changed since the last request.
         _drik.set_ayanamsa_mode(_AYANAMSA_MODE)
+        # Must be set before any position is computed -- it changes every body,
+        # and the Moon by enough to move the whole dasha timeline. See
+        # _DELTA_T_RATIONALE; this is a deliberate convention match.
+        _swe.set_delta_t_userdef(_DELTA_T_DAYS)
 
         ascendant_raw = _drik.ascendant(jd_local, place)
         chart_rows = _charts.rasi_chart(jd_local, place)
         retrograde_indices = set(_drik.planets_in_retrograde(jd_local, place))
+        node_rows = _node_rows(jd_local, place)
         maha_intervals, antara_intervals = _dasha_intervals(jd_local, place)
 
     mahadasha_timeline = [_to_period(i, 0) for i in maha_intervals]
@@ -426,6 +533,11 @@ def calculate_chart(birth: BirthData, as_of: _dt.date | None = None) -> dict[str
             raise CalculationError(
                 f"engine returned unexpected body index {index} in the rasi chart"
             )
+        # Substitute our mean-node figures for PyJHora's true-node ones. Done
+        # here so the nodes go through exactly the same sign / nakshatra / pada
+        # / house derivation as the other seven bodies.
+        if index in node_rows:
+            sign_index, degree_in_sign = node_rows[index]
         nakshatra, pada = _nakshatra_and_pada(sign_index * 30.0 + degree_in_sign)
         name = PLANET_NAMES[index]
         if name == "Moon":

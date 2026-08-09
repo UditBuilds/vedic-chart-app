@@ -224,20 +224,83 @@ tolerance once the known `FLG_TRUEPOS` and nutation offsets are accounted for.
 
 | Value | How it was checked |
 |---|---|
-| **Ascendant** | Not cross-checked numerically against a third party. Checked for physical consistency: for an early-afternoon birth the Sun must sit just past culmination, and it lands in house 9. A gross error (wrong hour, wrong hemisphere) would fail this; a small one would not. |
+| **Ascendant** | Cross-checked against AstroSage: Virgo 12°01′58″ here vs its `12-02-03`, **4.8″** apart. Also checked for physical consistency — for an early-afternoon birth the Sun must sit just past culmination, and it lands in house 9. |
 | **Houses** | Derived here, not by the engine. Tested against the whole-sign rule, co-tenancy, and Rahu/Ketu being six houses apart. |
-| **Nakshatra & pada** | Derived from JPL-verified longitudes against the canonical 13°20′ / 3°20′ divisions, with a guard that skips bodies within 2′ of a boundary. **Names are this project's table**, not the engine's — PyJHora's default language ships Tamil transliterations (*Karthigai*, *Thiruvaathirai*) and embeds glyphs in its sign/planet names. |
+| **Nakshatra & pada** | Derived from JPL-verified longitudes against the canonical 13°20′ / 3°20′ divisions, with a guard that skips bodies within 2′ of a boundary. All nine agree with AstroSage's. **Names are this project's table**, not the engine's — PyJHora's default language ships Tamil transliterations (*Karthigai*, *Thiruvaathirai*) and embeds glyphs in its sign/planet names. |
 | **Retrograde** | Recomputed independently from swisseph longitude *speed* and compared, for the reference date and for 2020-06-20 (Mercury, Venus, Jupiter, Saturn retrograde; Mars direct). Rahu/Ketu are always retrograde and the engine reflects this **without hand-correction**. |
-| **Dasha timeline** | Not cross-checked against a third-party Vedic tool. Tested against the canonical Vimshottari definition: cyclic lord order, per-lord year allocations, 120-year total, exact JD contiguity, all 81 antardashas proportional to `maha × antara ÷ 120`, and boundary resolution at every changeover. |
+| **Dasha timeline** | Lords and boundary dates now cross-checked against AstroSage (within 1–2 days). Also tested against the canonical Vimshottari definition: cyclic lord order, per-lord year allocations, 120-year total, exact JD contiguity, all 81 antardashas proportional to `maha × antara ÷ 120`, and boundary resolution at every changeover. |
 
-**Known gap, stated plainly:** no third-party *Vedic* tool (AstroSage or
-similar) was consulted. Those sites are form-driven and could not be captured
-as a reproducible fixture — and most run the same Swiss Ephemeris this service
-does, so agreement would have been weaker evidence than JPL. The consequence is
-that the **Vedic convention layer** — ascendant, nakshatra naming, and the dasha
-timeline — rests on canonical definitions and internal consistency, not on an
-independent Vedic implementation. Anyone with access to a trusted kundli tool
-should spot-check `tests/test_independent_verification.py`'s two charts.
+### Cross-checked against AstroSage
+
+The Vedic convention layer **was** subsequently checked against
+[AstroSage's free kundli](https://www.astrosage.com/kundli/) on 2026-08-09,
+with inputs matched exactly rather than left to its geocoder (its Settings
+panel accepts manual coordinates and an ayanamsa selector). AstroSage confirmed
+it used `GMT at Birth 09:10:43`, `Time Zone 5.5`, `28:37:N`, `77:13:E`,
+`Ayanamsa 023-50-03 / Lahiri Ayan` — 1.70″ from ours.
+
+Everything user-visible agrees: ascendant sign, all 9 planet signs, all 9
+whole-sign houses, moon nakshatra and pada (`BHARANI-2`), and the current
+mahadasha and antardasha lords (Mars / Rahu).
+
+That comparison surfaced two **convention** mismatches, since fixed — see
+[Deliberate convention choices](#deliberate-convention-choices). After the fix,
+Rahu agrees to **14″** (was 989″) and the Moon to **0.8″** (was 38.5″), and the
+dasha boundaries land within **1–2 days** of AstroSage's (was ~7 days).
+
+One residual disagreement is worth knowing about. Mars (+48.6″), Saturn
+(+51.3″) and Jupiter (−79.6″) differ from AstroSage by more than an
+arcminute in Jupiter's case. Delta T does not explain it — it shifts slow
+bodies by under 2″. Here the independent evidence favours this service: our
+positions match JPL DE441 to ≤0.12″ for exactly those three bodies, so it is
+AstroSage departing from the JPL reference. The cause is not visible from
+outside; likely a lower-precision series for the outer planets. None of it
+changes a sign, nakshatra or pada.
+
+## Deliberate convention choices
+
+Two things here are **intentionally not** the astronomically correct option.
+Both are pinned by `tests/test_conventions.py`, which will fail loudly if
+someone "corrects" them. The reasoning, in short: this product's credibility
+rests on agreeing with the tools its audience already trusts, not on being more
+rigorous than them. A user who sees a different nakshatra or a dasha date a
+week off their existing kundli concludes we are broken — they do not conclude
+that Swiss Ephemeris applies Delta T and AstroSage does not.
+
+**1. Rahu/Ketu use the mean node, not the true node.** They sit ~16.5′ apart
+(12°34′15″ vs 12°17′46″ of Leo on the reference chart) — easily enough to move
+a graha across a pada boundary. Mainstream Vedic practice uses the mean node;
+PyJHora defaults to the true node.
+
+PyJHora *appears* to expose a switch, `const.set_node_mode(use_true)`, which
+flips `const._RAHU` between `swe.TRUE_NODE` and `swe.MEAN_NODE`. **It does not
+work once the library is loaded**: `drik._sidereal_planet_list` is built at
+import time and captures the old `const._RAHU` as a dictionary *key*, so
+flipping the constant afterwards changes nothing — verified, Rahu moved 0.0″.
+Its own docstring ("call this ONCE at process start") concedes the limitation,
+and depending on import order for a correct chart is the same fragility that
+already bit us with PyJHora's leaked `year_duration`. So the node is computed
+directly via `swe.MEAN_NODE`, reusing `drik.PLANET_FLAGS` so it is derived
+under byte-identical conditions to the other seven bodies, and Ketu is taken as
+exactly opposite.
+
+**2. The UT→TT (Delta T) correction is disabled.** Ephemerides are computed in
+Terrestrial Time; converting a civil birth moment to TT means adding Delta T,
+~63 seconds in 1998. `swe.calc_ut` does this and is correct. Traditional
+panchanga software, AstroSage included, does not. The gap is negligible for
+slow bodies but moves the Moon ~39″ — and because the Vimshottari balance is a
+fraction of the Moon's position within its nakshatra, that cascades into a
+~7-day shift in *every* dasha boundary.
+
+`swe.set_delta_t_userdef(0.0)` pins Delta T to zero, making `calc_ut` behave as
+`calc`. This is the documented pyswisseph override and it reaches PyJHora's
+internal `calc_ut` calls without patching or forking. It reproduces AstroSage's
+Moon to 0.8″.
+
+Note this shifts *every* body, not only the Moon — Sun −2.5″, Mercury −4.7″,
+Venus −3.1″, Mars −1.9″, Jupiter −0.4″, Saturn −0.3″. On the reference chart no
+sign, house, nakshatra, pada or retrograde flag changed as a result. The
+ascendant is unaffected, since it derives from sidereal time, a UT quantity.
 
 ### Offline guarantee
 
@@ -255,8 +318,9 @@ contains no `os.environ`, `getenv`, `api_key` or `requests.` usage.
 python -m pytest -q
 ```
 
-111 tests. `tests/test_dasha.py` is the one to read first — the dasha boundary
+118 tests. `tests/test_dasha.py` is the one to read first — the dasha boundary
 maths is where an off-by-one is most likely and least visible.
+`tests/test_conventions.py` pins the two deliberate departures above.
 
 ---
 
