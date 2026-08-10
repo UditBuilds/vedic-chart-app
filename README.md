@@ -370,16 +370,30 @@ reasons better over prose, and a dump invites it to echo schema noise
 What it may know is exactly what is in that block. Anything absent — D9,
 Shadbala, Yogini dasha — it is instructed to decline rather than approximate.
 
-- **Model**: `llama-3.3-70b-versatile`. Re-checked rather than inherited: as of
-  2026-08-10 it is still a GroqCloud *production* model, 131k context, 32,768
-  max completion. `openai/gpt-oss-120b` is cheaper and faster; the 70B was kept
-  for stronger adherence to negative instructions, which is most of the voice
-  rules.
-- **Free-tier limits**: 30 req/min, 1,000 req/day, **12,000 tokens/min**,
-  100,000 tokens/day. Tokens-per-minute binds first — a turn costs roughly
-  1,500–2,500 in plus the output cap, so four to six turns a minute. That is
-  why the facts block is terse and the history window is bounded, and there is
-  a test asserting a full-history prompt stays under ~3,000 tokens.
+- **Model**: `openai/gpt-oss-120b`. The previous pick,
+  `llama-3.3-70b-versatile`, is on Groq's deprecation list with a **2026-08-16
+  shutdown**. Groq names two replacements; both were tested live rather than
+  chosen from docs, and they differ sharply on the only axis that matters here
+  — getting a usable answer inside a small token cap:
+  - `openai/gpt-oss-120b` puts its chain of thought in a separate `reasoning`
+    field and leaves `content` clean. At `reasoning_effort="low"` a reply costs
+    ~130 completion tokens and finishes normally.
+  - `qwen/qwen3.6-27b` emits a literal `<think>` block **into** `content`, and
+    burned the whole 400-token cap on reasoning without reaching an answer.
+    `reasoning_format="hidden"` removed the visible `<think>` but still spent
+    the entire cap and returned an **empty** message.
+- **Reasoning effort** is `low` deliberately: `medium` spent all 400 tokens
+  thinking and truncated the answer mid-sentence, and `none` is rejected by the
+  API for this model despite appearing in the SDK's type hints.
+- **Free-tier limits**, read from live response headers rather than docs:
+  1,000 req/day, **8,000 tokens/min**, 200,000 tokens/day. The per-minute
+  ceiling **drops by a third** from the retired model's 12,000 — every
+  available replacement reports 8,000. A turn costs ~2,400–2,900 tokens, so
+  roughly **three turns a minute**, not the four to six before. The daily
+  ceiling moved the other way, 100,000 → 200,000. This makes the terse facts
+  block and bounded history window matter more, not less; a test asserts a
+  full-history prompt stays under ~3,000 tokens, and the verification script
+  paces itself at 22s between turns.
 - **Cost control**: `max_completion_tokens` is set on every call, in the single
   function that talks to Groq, and a test fails if a second uncapped call site
   appears. Note the field name — the SDK marks `max_tokens` as "Deprecated in

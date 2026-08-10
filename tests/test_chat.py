@@ -50,6 +50,34 @@ def test_max_completion_tokens_is_capped_by_default() -> None:
     assert signature.parameters["max_completion_tokens"].default == llm.MAX_COMPLETION_TOKENS
 
 
+def test_the_retired_model_is_not_in_use() -> None:
+    """llama-3.3-70b-versatile shuts down 2026-08-16; nothing may point at it."""
+    assert llm.DEFAULT_MODEL != llm.RETIRED_MODEL
+    assert llm.DEFAULT_MODEL == "openai/gpt-oss-120b"
+
+
+def test_reasoning_effort_is_low_and_passed_on_every_call() -> None:
+    """On this model the token cap covers reasoning too.
+
+    Measured live: "medium" spends the entire 400-token budget thinking and
+    truncates the visible answer; "low" answers in ~130. "none" is rejected by
+    the API despite appearing in the SDK's type hints.
+    """
+    assert llm.REASONING_EFFORT == "low"
+    signature = inspect.signature(llm.complete)
+    assert signature.parameters["reasoning_effort"].default == llm.REASONING_EFFORT
+    source = inspect.getsource(llm)
+    call_start = source.index("chat.completions.create")
+    assert "reasoning_effort=" in source[call_start:call_start + 600]
+
+
+def test_empty_reply_from_an_exhausted_budget_is_diagnosed() -> None:
+    """A blank message must never be returned as if it were an answer."""
+    source = inspect.getsource(llm.complete)
+    assert 'finish_reason == "length"' in source
+    assert "reasoning" in source
+
+
 def test_every_groq_call_site_passes_an_explicit_cap() -> None:
     """No code path may reach the API uncapped.
 

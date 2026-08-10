@@ -1,19 +1,47 @@
 """Groq inference for the interpretation layer.
 
 Model choice
-    ``llama-3.3-70b-versatile``. The brief flagged this as an assumption to
-    re-check rather than inherit; as of 2026-08-10 it is still listed as a
-    GroqCloud *production* model (not preview, not deprecated), 131k context,
-    32,768 max completion. ``openai/gpt-oss-120b`` is faster and cheaper but
-    the 70B has the stronger reputation for following negative instructions,
-    which is most of what the voice rules in the system prompt are.
+    ``openai/gpt-oss-120b``. The previous pick, ``llama-3.3-70b-versatile``,
+    is on Groq's deprecation list with a shutdown date of 2026-08-16; Groq's
+    own recommended replacements are this model or ``qwen/qwen3.6-27b``.
 
-Free-tier limits that shape this module (llama-3.3-70b-versatile):
-    30 requests/min, 1,000 requests/day, **12,000 tokens/min**, 100,000
-    tokens/day. Tokens per minute is the binding constraint: a turn costs
-    roughly 1,500-2,500 input plus the output cap, so about four to six turns a
-    minute. That is fine for a human typing at a prompt, and it is why the
-    facts block is formatted tersely and the history window is bounded.
+    Both were tested live rather than chosen from the docs, and they behave
+    very differently on the one axis that matters here -- whether you get a
+    usable answer inside a small token cap:
+
+    * ``openai/gpt-oss-120b`` puts its chain of thought in a separate
+      ``reasoning`` field and leaves ``content`` clean. At
+      ``reasoning_effort="low"`` a full reply costs about 130 completion
+      tokens and finishes normally.
+    * ``qwen/qwen3.6-27b`` emits a literal ``<think>`` block *into*
+      ``content``, and burned the entire 400-token cap on reasoning without
+      ever reaching an answer. Setting ``reasoning_format="hidden"`` removed
+      the visible ``<think>`` but still consumed the whole cap and returned an
+      empty message. Its 16,384 max completion suggests it expects far more
+      room than the token budget here allows.
+
+    So the choice is not close, and it is about output discipline rather than
+    model quality.
+
+Reasoning effort
+    ``low``, deliberately. ``medium`` spent all 400 tokens on reasoning and
+    truncated the visible answer mid-sentence. ``none`` is rejected outright by
+    the API for this model ("`reasoning_effort` must be one of `low`, `medium`,
+    or `high`") despite appearing in the SDK's type hints.
+
+Free-tier limits that shape this module (measured from live response headers
+on 2026-08-10, not from the docs):
+    ``openai/gpt-oss-120b``: 1,000 requests/day, **8,000 tokens/min**, 200,000
+    tokens/day. ``qwen/qwen3.6-27b`` reports the same 8,000/min.
+    ``llama-3.3-70b-versatile`` had 12,000/min, so the ceiling drops by a third
+    on every available replacement.
+
+    Tokens per minute still binds first. A turn costs roughly 2,400-2,900
+    (about 2,500 of prompt plus ~130 of reply), which is close to **three turns
+    a minute** rather than the four to six the old model allowed. Comfortable
+    for someone typing at a prompt, and it makes the terse facts block and the
+    bounded history window matter more, not less. The daily ceiling moved the
+    other way: 200,000 against the old 100,000.
 
 Cost control
     :data:`MAX_COMPLETION_TOKENS` is applied inside :func:`complete`, which is
@@ -22,6 +50,10 @@ Cost control
     ``max_completion_tokens``: the Groq SDK marks the older ``max_tokens`` as
     "Deprecated in favor of max_completion_tokens", so the current field is
     used even though the brief named the old one.
+
+    The cap covers reasoning *plus* visible output on this model, so a cap set
+    too low yields an empty message rather than a short one. :func:`complete`
+    treats that as an error instead of returning a blank reply.
 """
 
 from __future__ import annotations
@@ -29,12 +61,21 @@ from __future__ import annotations
 import os
 from typing import Any, Final
 
-#: Verified against GroqCloud's production model list on 2026-08-10.
-DEFAULT_MODEL: Final[str] = "llama-3.3-70b-versatile"
+#: Confirmed present and active via the live models endpoint on 2026-08-10.
+DEFAULT_MODEL: Final[str] = "openai/gpt-oss-120b"
 
-#: Hard ceiling on generated tokens for every call. Replies are meant to be a
-#: few short sentences with at most two chart facts, so this is generous.
+#: Groq's shutdown date for the model this replaced. Kept as a breadcrumb.
+RETIRED_MODEL: Final[str] = "llama-3.3-70b-versatile"
+RETIRED_MODEL_SHUTDOWN: Final[str] = "2026-08-16"
+
+#: Hard ceiling on generated tokens for every call. On this model the cap
+#: covers reasoning as well as visible output; measured usage at
+#: reasoning_effort="low" is ~130, so this leaves roughly 3x headroom.
 MAX_COMPLETION_TOKENS: Final[int] = 400
+
+#: See the module docstring: "medium" exhausts the cap on reasoning alone and
+#: "none" is rejected by the API for this model.
+REASONING_EFFORT: Final[str] = "low"
 
 #: Low but not zero: the voice should be consistent, not robotic.
 DEFAULT_TEMPERATURE: Final[float] = 0.6
@@ -84,6 +125,7 @@ def complete(
     model: str = DEFAULT_MODEL,
     max_completion_tokens: int = MAX_COMPLETION_TOKENS,
     temperature: float = DEFAULT_TEMPERATURE,
+    reasoning_effort: str = REASONING_EFFORT,
 ) -> str:
     """Send one turn to Groq and return the reply text.
 
@@ -109,6 +151,7 @@ def complete(
             # Explicit on every call -- an uncapped generation is an uncapped bill.
             max_completion_tokens=max_completion_tokens,
             temperature=temperature,
+            reasoning_effort=reasoning_effort,
         )
     except Exception as exc:
         # Deliberately broad: the SDK raises a family of connection, rate-limit
@@ -118,7 +161,21 @@ def complete(
 
     if not response.choices:
         raise InferenceError("Groq returned no choices")
-    content = response.choices[0].message.content
+
+    choice = response.choices[0]
+    content = choice.message.content
     if not content or not content.strip():
-        raise InferenceError("Groq returned an empty message")
+        # On a reasoning model the cap covers thinking as well as output, so
+        # the usual cause is a budget too small to reach an answer -- say that
+        # rather than reporting a bare "empty response".
+        if choice.finish_reason == "length":
+            raise InferenceError(
+                f"model {model!r} used its entire {max_completion_tokens}-token budget on "
+                f"reasoning and produced no visible reply; raise max_completion_tokens "
+                f"or lower reasoning_effort (currently {reasoning_effort!r})"
+            )
+        raise InferenceError(
+            f"model {model!r} returned an empty message "
+            f"(finish_reason={choice.finish_reason!r})"
+        )
     return content.strip()

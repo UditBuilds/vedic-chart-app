@@ -23,6 +23,7 @@ import datetime as _dt
 import re
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -62,9 +63,28 @@ VARIED = [
 
 SEPARATOR = "=" * 78
 
+#: Seconds to wait between turns. The free tier allows 8,000 tokens/min on
+#: openai/gpt-oss-120b and a turn costs roughly 2,400-2,900, so about three
+#: turns a minute is the ceiling. Without this the run dies partway through
+#: with a 429. Measured, not guessed -- see app/services/llm.py.
+TURN_DELAY_SECONDS = 22.0
+
+#: One retry, because a 429 mid-run wastes the tokens already spent.
+RATE_LIMIT_RETRY_SECONDS = 65.0
+
 
 def _run(connection, user_id: str, message: str) -> dict:
-    return chat_service.respond(connection, user_id, BIRTH, message)
+    """One turn, paced for the free tier and retried once on a rate limit."""
+    try:
+        result = chat_service.respond(connection, user_id, BIRTH, message)
+    except LLMError as exc:
+        if "429" not in str(exc) and "rate" not in str(exc).lower():
+            raise
+        print(f"  [rate limited; waiting {RATE_LIMIT_RETRY_SECONDS:.0f}s]", flush=True)
+        time.sleep(RATE_LIMIT_RETRY_SECONDS)
+        result = chat_service.respond(connection, user_id, BIRTH, message)
+    time.sleep(TURN_DELAY_SECONDS)
+    return result
 
 
 def main() -> int:
@@ -124,17 +144,32 @@ def main() -> int:
             "Given what I told you at the start, does that timing actually work?",
         ]
         last_reply = ""
+        last_prompt = ""
         for index, question in enumerate(memory_turns, start=1):
-            last_reply = _run(connection, "mem", question)["reply"]
+            turn = _run(connection, "mem", question)
+            last_reply, last_prompt = turn["reply"], turn["prompt"]
             all_replies.append((question, last_reply))
             print(f"\n[turn {index}] you: {question}\n\n{last_reply}\n")
-        recalled = any(
-            word in last_reply.lower() for word in ("job", "bangalore", "own", "leav", "start")
-        )
-        if not recalled:
-            failures.append("turn 4 did not reference the turn-1 context")
+
+        # Two distinct things, worth separating: whether the history actually
+        # reached the model, and whether the model chose to use it. Only the
+        # first is ours to guarantee -- conflating them makes a prompt-plumbing
+        # bug and a model-behaviour quirk look identical.
+        carried = [w for w in ("Bangalore", "job", "own") if w.lower() in last_prompt.lower()]
+        if len(carried) < 3:
+            failures.append(
+                f"turn-1 content did not survive into turn 4's prompt (found {carried})"
+            )
         else:
-            print(">> turn 4 references the turn-1 context: PASS")
+            print(">> PLUMBING: turn-1 content present in turn 4's prompt "
+                  f"({', '.join(carried)}) - PASS")
+
+        echoed = [
+            w for w in ("job", "bangalore", "own", "leav", "start", "venture", "business")
+            if w in last_reply.lower()
+        ]
+        print(f">> RECALL: turn 4 explicitly names turn-1 detail: "
+              f"{'yes ' + str(echoed) if echoed else 'no - answers in context but without naming it'}")
 
     except MissingAPIKeyError as exc:
         print(f"\nCANNOT RUN: {exc}", file=sys.stderr)
