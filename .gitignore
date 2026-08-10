@@ -18,3 +18,11 @@ Thumbs.db
 # Local overrides
 instance/
 *.local
+
+# Chat history and cached charts -- local state, and it contains conversation
+# content. Never commit it.
+*.db
+*.sqlite3
+
+# API keys
+.env
