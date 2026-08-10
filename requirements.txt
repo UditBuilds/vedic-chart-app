@@ -1,0 +1,29 @@
+# Runtime dependencies for the Vedic chart calculation service.
+#
+# IMPORTANT: PyJHora 4.8.7 declares NO dependencies in its wheel metadata
+# (`Requires-Dist` is empty), yet its calculation modules import all of the
+# packages below at module scope. Installing PyJHora alone therefore produces
+# an ImportError chain at first use. Every entry here was found empirically by
+# importing jhora.panchanga.drik / jhora.horoscope.chart.charts /
+# jhora.horoscope.dhasa.graha.vimsottari and resolving each failure in turn.
+#
+# PyQt6, pyqtgraph and img2pdf are listed in the sdist's own requirements.txt
+# but are needed only by jhora.ui.*, which we never import. They are
+# deliberately omitted -- the calculation modules import cleanly without them.
+
+Flask==3.1.2
+
+# Astrology engine (AGPL-3.0) and its ephemeris backend.
+PyJHora==4.8.7
+pyswisseph==2.10.3.2
+
+# Undeclared but genuinely required by PyJHora's calculation modules.
+numpy==2.4.6
+python-dateutil==2.9.0.post0
+pytz==2026.3.post1
+timezonefinder==8.2.5
+# jhora.utils imports these at module scope for its optional place-lookup
+# helpers. We never call those helpers, so no network request is ever made --
+# see tests/test_offline.py, which fails the build if a socket is opened.
+geocoder==1.38.1
+geopy==2.5.0
