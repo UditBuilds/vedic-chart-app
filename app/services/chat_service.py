@@ -22,36 +22,94 @@ from app import db
 from app.services import facts, llm
 from app.services.astrology import BirthData, calculate_chart, calculate_transits
 
-#: The voice. A first draft, deliberately -- it is meant to be tested against
-#: real transcripts and revised, not treated as settled.
-#:
-#: The banned-phrase list is the load-bearing part. Generic astrology-app
-#: filler is what makes an interpretation feel machine-made, and a model asked
-#: only to "be specific" will still reach for it.
-SYSTEM_PROMPT_TEMPLATE: Final[str] = """\
-You are a calm, direct Vedic astrology companion. You interpret facts about a
-person's birth chart. You never invent, guess, or approximate a placement,
-dasha period, or transit that isn't given to you below - if something isn't in
-the facts, say plainly you don't have that calculated yet.
+# --------------------------------------------------------------------------
+# Prompt rules
+#
+# Every piece of instruction text is a single-line constant, interpolated into
+# the template below. Nothing is typed as prose inside the triple-quoted block.
+#
+# This is not stylistic. Twice now, rule text typed inline picked up a literal
+# newline where a space belonged, because the source was wrapped to fit 79
+# columns: once splitting "this is your sign to" in the banned-phrase list, and
+# later splitting "It never means a planet moved" in the relational rule. Both
+# times the rendered prompt silently stopped containing the phrase that a check
+# searched for, so the check passed while the prompt was wrong. The second one
+# happened *after* the first was fixed, because the first fix was applied to
+# the instance rather than the class.
+#
+# A string with no newlines in it cannot be wrapped by the template. Keeping
+# every rule in a constant makes the bug structurally impossible for new rules,
+# and :data:`PROMPT_RULES` gives the tests something to assert against.
+# --------------------------------------------------------------------------
 
-Never state a relationship, comparison, sequence, or change between two facts -
-which planet is stronger, what moves where, what comes before or after - unless
-that specific relationship is itself present in FACTS below.
-A dasha period ending or beginning only changes which period is active.
-It never means a planet moved: natal placements are fixed for life.
+ROLE: Final[str] = (
+    "You are a calm, direct Vedic astrology companion. You interpret facts about"
+    " a person's birth chart."
+)
+
+RULE_NO_INVENTION: Final[str] = (
+    "You never invent, guess, or approximate a placement, dasha period, or"
+    " transit that isn't given to you below - if something isn't in the facts,"
+    " say plainly you don't have that calculated yet."
+)
+
+RULE_NO_RELATIONSHIPS: Final[str] = (
+    "Never state a relationship, comparison, sequence, or change between two"
+    " facts - which planet is stronger, what moves where, what comes before or"
+    " after - unless that specific relationship is itself present in FACTS"
+    " below. A dasha period ending or beginning only changes which period is"
+    " active. It never means a planet moved: natal placements are fixed for"
+    " life."
+)
+
+VOICE_GROUNDED: Final[str] = (
+    "Calm and specific. Ground any claim about how someone might feel in a fact"
+    " first."
+)
+VOICE_TWO_FACTS: Final[str] = (
+    "Two chart facts maximum per message. Don't data-dump the chart."
+)
+VOICE_END_ON_OBSERVATION: Final[str] = (
+    "End on an observation, not an affirmation."
+)
+VOICE_PLAIN_AND_CONTINUOUS: Final[str] = (
+    "Short, plain sentences. Reference earlier conversation naturally instead of"
+    " re-explaining the chart from scratch each turn."
+)
+VOICE_MATCH_TIMESCALE: Final[str] = (
+    'Match the fact to the question\'s timescale: life-pattern questions ->'
+    ' natal/dasha. "This week/today" questions -> transiting Moon nakshatra or'
+    ' transit house. "Who am I" questions -> natal placements.'
+)
+
+#: Voice bullets, in the order they appear. The banned-phrase list is rendered
+#: separately because it expands into many lines.
+VOICE_RULES: Final[tuple[str, ...]] = (
+    VOICE_GROUNDED,
+    VOICE_TWO_FACTS,
+    VOICE_END_ON_OBSERVATION,
+    VOICE_PLAIN_AND_CONTINUOUS,
+    VOICE_MATCH_TIMESCALE,
+)
+
+#: Every rule that must survive into the rendered prompt intact. The line-wrap
+#: guard iterates this; adding a rule without adding it here means it is not
+#: covered, so keep them together.
+PROMPT_RULES: Final[tuple[str, ...]] = (
+    ROLE,
+    RULE_NO_INVENTION,
+    RULE_NO_RELATIONSHIPS,
+) + VOICE_RULES
+
+#: Structure only. All prose lives in the constants above -- see the note there,
+#: and ``test_template_carries_structure_not_prose``.
+SYSTEM_PROMPT_TEMPLATE: Final[str] = """\
+{role} {rule_no_invention}
+
+{rule_no_relationships}
 
 Voice:
-- Calm and specific. Ground any claim about how someone might feel in a fact
-  first.
-- Never use any of these phrases:
-{banned_list}
-- Two chart facts maximum per message. Don't data-dump the chart.
-- End on an observation, not an affirmation.
-- Short, plain sentences. Reference earlier conversation naturally instead of
-  re-explaining the chart from scratch each turn.
-- Match the fact to the question's timescale: life-pattern questions ->
-  natal/dasha. "This week/today" questions -> transiting Moon nakshatra or
-  transit house. "Who am I" questions -> natal placements.
+{voice_block}
 
 FACTS:
 Natal:
@@ -97,6 +155,22 @@ def _render_banned_list() -> str:
     return "\n".join(f'  - "{phrase}"' for phrase in BANNED_PHRASES)
 
 
+#: Where the banned-phrase block sits among the voice bullets. It was second
+#: before the rules were extracted into constants, and is pinned here so the
+#: refactor did not quietly reorder what the model reads.
+_BANNED_LIST_POSITION: Final[int] = 1
+
+
+def _render_voice_block() -> str:
+    """Voice bullets with the banned-phrase list spliced in at its old place."""
+    bullets = [f"- {rule}" for rule in VOICE_RULES]
+    bullets.insert(
+        _BANNED_LIST_POSITION,
+        "- Never use any of these phrases:\n" + _render_banned_list(),
+    )
+    return "\n".join(bullets)
+
+
 def birth_from_row(row: dict[str, Any]) -> BirthData:
     """Rebuild a :class:`BirthData` from the stored birth columns."""
     return BirthData(
@@ -130,7 +204,10 @@ def build_system_prompt(
 ) -> str:
     """Assemble the grounded prompt for one turn."""
     return SYSTEM_PROMPT_TEMPLATE.format(
-        banned_list=_render_banned_list(),
+        role=ROLE,
+        rule_no_invention=RULE_NO_INVENTION,
+        rule_no_relationships=RULE_NO_RELATIONSHIPS,
+        voice_block=_render_voice_block(),
         natal_summary=facts.format_natal(chart),
         dasha_summary=facts.format_dasha(chart),
         transit_summary=facts.format_transits(transits),

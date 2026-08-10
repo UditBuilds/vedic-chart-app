@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import inspect
+import re
 
 import pytest
 
@@ -313,6 +314,69 @@ def test_prompt_states_that_a_dasha_change_moves_no_planet(chart, transits) -> N
     prompt = chat_service.build_system_prompt(chart, transits, []).lower()
     assert "never means a planet moved" in prompt
     assert "natal placements are fixed" in prompt
+
+
+# --------------------------------------------------------- line-wrap guard
+#
+# Two bugs, one cause: rule text typed inline in the template picked up a
+# literal newline where a space belonged, so the rendered prompt stopped
+# containing the phrase a check searched for -- and the check passed anyway.
+# The pair below covers both directions: the first catches a rule that got
+# mangled, the second catches a new rule being typed inline instead of added
+# as a constant.
+
+def _collapse(text: str) -> str:
+    """Whitespace-insensitive form, so a line break reads the same as a space."""
+    return " ".join(text.split())
+
+
+@pytest.mark.parametrize("rule", chat_service.PROMPT_RULES, ids=lambda r: r[:40])
+def test_every_rule_survives_into_the_prompt_intact(rule, chart, transits) -> None:
+    """Each rule must appear in the rendered prompt, whitespace aside.
+
+    Comparing collapsed forms is the point: it passes whether the rule is
+    wrapped or not, and fails only if the *words* changed or the rule never
+    made it in. A rule silently dropped from the template fails here.
+    """
+    rendered = _collapse(chat_service.build_system_prompt(chart, transits, []))
+    assert _collapse(rule) in rendered, (
+        f"rule missing from the rendered prompt: {rule[:60]!r}"
+    )
+
+
+def test_every_rule_constant_is_a_single_line() -> None:
+    """A string with no newline cannot be split by the template."""
+    for rule in chat_service.PROMPT_RULES:
+        assert "\n" not in rule, f"rule contains a newline: {rule[:60]!r}"
+
+
+def test_banned_phrases_are_single_line_too() -> None:
+    for phrase in chat_service.BANNED_PHRASES:
+        assert "\n" not in phrase
+
+
+def test_template_carries_structure_not_prose() -> None:
+    """The template holds labels and placeholders; prose lives in constants.
+
+    Measured by stripping the placeholders and checking what literal text is
+    left. Today that is section headings ("Voice:", "FACTS:", "Natal:") and one
+    bullet lead-in. If someone types a new rule directly into the template --
+    the exact move that caused both bugs -- this budget blows and points them
+    at the constants instead.
+    """
+    literal = re.sub(r"\{\w+\}", "", chat_service.SYSTEM_PROMPT_TEMPLATE)
+    literal = _collapse(literal)
+    assert len(literal) < 200, (
+        f"the template now carries {len(literal)} chars of literal text: "
+        f"{literal!r}. New instruction text belongs in a constant added to "
+        f"PROMPT_RULES, not typed into the template."
+    )
+
+
+def test_prompt_rules_registry_covers_the_voice_rules() -> None:
+    """A rule outside PROMPT_RULES is a rule the guard does not check."""
+    for rule in chat_service.VOICE_RULES:
+        assert rule in chat_service.PROMPT_RULES
 
 
 # -------------------------------------------------------- banned phrases
