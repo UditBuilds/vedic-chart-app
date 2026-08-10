@@ -177,8 +177,26 @@ def test_dasha_summary_carries_both_running_periods(chart) -> None:
 
 def test_transit_summary_leads_with_the_moon(transits) -> None:
     rendered = facts.format_transits(transits)
-    assert "Transiting Moon nakshatra: Ardra pada 4" in rendered
+    # Carries the ordinal, and the transiting Moon's own house -- see
+    # test_transiting_moon_house_travels_with_its_nakshatra.
+    assert "Ardra (6th of 27) pada 4" in rendered
     assert "Sun transiting Cancer" in rendered
+
+
+def test_transiting_moon_house_travels_with_its_nakshatra(transits) -> None:
+    """Regression: the model read the nakshatra here and the house from natal.
+
+    Asked how the week looked it reported the transiting Moon in the 8th house
+    -- the natal Moon's house -- while correctly naming its transiting
+    nakshatra. Both halves now sit on one explicitly labelled line.
+    """
+    summary = next(
+        l for l in facts.format_transits(transits).splitlines()
+        if l.startswith("Transiting Moon")
+    )
+    assert "house 10" in summary, "the transiting Moon's own house must be on this line"
+    assert "Ardra" in summary
+    assert "NOT the natal Moon" in summary
 
 
 def test_history_is_trimmed_from_the_front() -> None:
@@ -224,6 +242,77 @@ def test_prompt_stays_within_the_free_tier_token_budget(chart, transits) -> None
     prompt = chat_service.build_system_prompt(chart, transits, history)
     approx_tokens = len(prompt) / 4
     assert approx_tokens < 3000, f"prompt is ~{approx_tokens:.0f} tokens"
+
+
+# ------------------------------------------------- relational fabrication
+#
+# Two fabrications were observed in live output and are pinned here, the same
+# treatment the banned-phrase list got. Both were *relational* claims -- the
+# prompt forbade inventing a placement but said nothing about inventing a
+# relationship between placements.
+
+
+def test_every_nakshatra_ordinal_round_trips() -> None:
+    """The ordinal must be the engine's own 1-based index, for all 27."""
+    from app.services.astrology import NAKSHATRA_NAMES
+    for position, name in enumerate(NAKSHATRA_NAMES, start=1):
+        assert facts.nakshatra_ordinal(name) == position
+
+
+def test_ardra_is_the_sixth_nakshatra() -> None:
+    """The exact fabrication: the model called Ardra "the 8th nakshatra"."""
+    assert facts.nakshatra_ordinal("Ardra") == 6
+    assert facts.describe_nakshatra("Ardra") == "Ardra (6th of 27)"
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [("Ashwini", "Ashwini (1st of 27)"), ("Bharani", "Bharani (2nd of 27)"),
+     ("Krittika", "Krittika (3rd of 27)"), ("Rohini", "Rohini (4th of 27)"),
+     ("Revati", "Revati (27th of 27)")],
+)
+def test_ordinal_suffixes_read_naturally(name, expected) -> None:
+    assert facts.describe_nakshatra(name) == expected
+
+
+def test_unknown_nakshatra_is_rejected() -> None:
+    with pytest.raises(KeyError, match="unknown nakshatra"):
+        facts.nakshatra_ordinal("Definitely Not A Nakshatra")
+
+
+def test_natal_moon_nakshatra_carries_its_ordinal(chart) -> None:
+    rendered = facts.format_natal(chart)
+    moon_line = next(l for l in rendered.splitlines() if l.startswith("Moon:"))
+    assert "Bharani (2nd of 27)" in moon_line
+
+
+def test_transit_moon_nakshatra_carries_its_ordinal(transits) -> None:
+    assert "Ardra (6th of 27)" in facts.format_transits(transits)
+
+
+def test_full_mahadasha_sequence_reaches_the_facts(chart) -> None:
+    """Without this, "what comes after next" had no grounded answer.
+
+    Only the immediately-following period used to be rendered, so anything
+    further ahead was a gap the model filled by inventing.
+    """
+    rendered = facts.format_dasha(chart)
+    for lord in ("Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter",
+                 "Saturn", "Mercury", "Ketu"):
+        assert f"  {lord}: " in rendered, f"{lord} missing from the sequence"
+    assert "Full mahadasha sequence" in rendered
+
+
+def test_prompt_forbids_inventing_relationships(chart, transits) -> None:
+    prompt = chat_service.build_system_prompt(chart, transits, []).lower()
+    assert "never state a relationship, comparison, sequence, or change" in prompt
+
+
+def test_prompt_states_that_a_dasha_change_moves_no_planet(chart, transits) -> None:
+    """The exact fabrication: "Rahu will move from your 12th house into the 1st"."""
+    prompt = chat_service.build_system_prompt(chart, transits, []).lower()
+    assert "never means a planet moved" in prompt
+    assert "natal placements are fixed" in prompt
 
 
 # -------------------------------------------------------- banned phrases

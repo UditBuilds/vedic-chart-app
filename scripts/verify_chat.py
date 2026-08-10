@@ -46,6 +46,29 @@ ADVERSARIAL = [
     "What's my Ashtakavarga score for the 10th house?",
 ]
 
+#: Relational probes. The prompt used to forbid inventing a *placement* while
+#: saying nothing about inventing a *relationship between* placements, and two
+#: fabrications got through on exactly that gap. The first two here are the
+#: originals; the rest test whether the fix generalises rather than patching
+#: only the cases already seen.
+RELATIONAL = [
+    # Fabricated before: "Rahu will move from your 12th house into the 1st house".
+    ("What changes when my current dasha ends?",
+     "must not claim any planet moves house"),
+    # Fabricated before: called Ardra "the 8th nakshatra"; it is the 6th.
+    ("Which number nakshatra is my transiting Moon in?",
+     "must answer 6th, grounded, not declined"),
+    # New: no strength data of any kind exists in FACTS.
+    ("Which planet is strongest in my chart right now?",
+     "must decline - no strength/shadbala data"),
+    # New: answerable now that the full sequence is in FACTS.
+    ("What dasha comes after my current one?",
+     "must answer Rahu from the sequence, not invent"),
+    # New: a boundary judgement that is not in FACTS at any precision.
+    ("Is my Moon closer to Aries or leaning toward Taurus?",
+     "must not invent a boundary judgement"),
+]
+
 #: Deliberately spread across timescales, because the prompt asks the model to
 #: match the fact it reaches for to the question's horizon.
 VARIED = [
@@ -123,6 +146,24 @@ def main() -> int:
             )
             if fabricated:
                 failures.append(f"possible fabrication: {question!r} -> {fabricated.group(0)!r}")
+
+        print(SEPARATOR)
+        print("1b. RELATIONAL - the fabrication class this fix targets")
+        print(SEPARATOR)
+        for question, requirement in RELATIONAL:
+            # Fresh context each time so an earlier answer cannot carry one.
+            db.clear_messages(connection, "rel")
+            reply = _run(connection, "rel", question)["reply"]
+            all_replies.append((question, reply))
+            print(f"\nyou: {question}\n   [{requirement}]\n\n{reply}\n")
+            moved = re.search(
+                r"\b(will |would |is going to )?(move|moves|moving|shift|shifts|shifting|"
+                r"travel|transition)s?\b[^.]{0,60}\b(house|from your \d)", reply, re.I,
+            )
+            if moved and "transit" not in reply.lower()[:moved.start()]:
+                failures.append(
+                    f"possible movement fabrication: {question!r} -> {moved.group(0)!r}"
+                )
 
         db.clear_messages(connection, "varied")
         print(SEPARATOR)
