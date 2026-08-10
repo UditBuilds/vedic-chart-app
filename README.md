@@ -40,6 +40,18 @@ curl -X POST http://127.0.0.1:5000/api/v1/chart -H "Content-Type: application/js
 There is nothing else to install. No ephemeris data files, no API keys, no
 network access at runtime — see [Offline guarantee](#offline-guarantee).
 
+### Chat
+
+```bash
+export GROQ_API_KEY=...      # free key from https://console.groq.com/keys
+python -m app.chat
+```
+
+An interactive terminal loop, deliberately — the only way to judge whether the
+voice works is to talk to it. `/facts` prints the exact prompt the model
+receives, `/reset` clears history, `/quit` exits. The chart calculation itself
+stays fully offline; only the interpretation layer touches the network.
+
 ### API
 
 | Method | Path | Purpose |
@@ -318,11 +330,88 @@ contains no `os.environ`, `getenv`, `api_key` or `requests.` usage.
 python -m pytest -q
 ```
 
-118 tests. `tests/test_dasha.py` is the one to read first — the dasha boundary
-maths is where an off-by-one is most likely and least visible.
-`tests/test_conventions.py` pins the two deliberate departures above.
+164 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
+read first — the dasha boundary maths is where an off-by-one is most likely and
+least visible. `tests/test_conventions.py` pins the two deliberate departures
+above; `tests/test_transits.py` holds the AstroSage transit fixtures.
+
+The chat tests cover persistence, prompt assembly and the token cap. Whether
+the *model* behaves — voice, grounding, memory — cannot be settled by unit
+tests; that needs `scripts/verify_chat.py` and a human reading the transcripts.
 
 ---
+
+## Transits
+
+`calculate_transits()` reports where the nine grahas are now, in houses counted
+from the **natal** ascendant — standard gochar, not a fresh chart cast for the
+current moment. Position and house only: no benefic/malefic scoring and no
+transit-to-natal aspects.
+
+`calculate_chart()` cannot be reused for this. Its `as_of` parameter only
+selects which dasha period is current; the positions it returns are always
+natal (verified — the planet list is identical for `as_of` 2001 and 2026). So
+transits are a separate path, but they share every primitive that matters: the
+same engine lock, ayanamsa, mean-node override and Delta-T convention.
+
+Verified against AstroSage on 2026-08-10 by casting a chart at the transit
+instant itself (11:30 IST). **All nine signs match**, and the Moon reads Ardra
+pada 4 in both. The stronger check is the handover: AstroSage's panchang puts
+Ardra → Punarvasu at 12:27:45 IST and this service puts it at **12:28:12** —
+28 seconds apart, which pins the Moon's rate as well as its position.
+
+## Interpretation layer
+
+A chat companion that reads chart facts and answers in a fixed voice. It is
+given facts as short labelled English lines rather than raw JSON — the model
+reasons better over prose, and a dump invites it to echo schema noise
+("your house_from_ascendant is 11") back at the user.
+
+What it may know is exactly what is in that block. Anything absent — D9,
+Shadbala, Yogini dasha — it is instructed to decline rather than approximate.
+
+- **Model**: `openai/gpt-oss-120b`. The previous pick,
+  `llama-3.3-70b-versatile`, is on Groq's deprecation list with a **2026-08-16
+  shutdown**. Groq names two replacements; both were tested live rather than
+  chosen from docs, and they differ sharply on the only axis that matters here
+  — getting a usable answer inside a small token cap:
+  - `openai/gpt-oss-120b` puts its chain of thought in a separate `reasoning`
+    field and leaves `content` clean. At `reasoning_effort="low"` a reply costs
+    ~130 completion tokens and finishes normally.
+  - `qwen/qwen3.6-27b` emits a literal `<think>` block **into** `content`, and
+    burned the whole 400-token cap on reasoning without reaching an answer.
+    `reasoning_format="hidden"` removed the visible `<think>` but still spent
+    the entire cap and returned an **empty** message.
+- **Reasoning effort** is `low` deliberately: `medium` spent all 400 tokens
+  thinking and truncated the answer mid-sentence, and `none` is rejected by the
+  API for this model despite appearing in the SDK's type hints.
+- **Free-tier limits**, read from live response headers rather than docs:
+  1,000 req/day, **8,000 tokens/min**, 200,000 tokens/day. The per-minute
+  ceiling **drops by a third** from the retired model's 12,000 — every
+  available replacement reports 8,000. A turn costs ~2,400–2,900 tokens, so
+  roughly **three turns a minute**, not the four to six before. The daily
+  ceiling moved the other way, 100,000 → 200,000. This makes the terse facts
+  block and bounded history window matter more, not less; a test asserts a
+  full-history prompt stays under ~3,000 tokens, and the verification script
+  paces itself at 22s between turns.
+- **Cost control**: `max_completion_tokens` is set on every call, in the single
+  function that talks to Groq, and a test fails if a second uncapped call site
+  appears. Note the field name — the SDK marks `max_tokens` as "Deprecated in
+  favor of `max_completion_tokens`", so the current field is used.
+- **State**: natal + dasha cached in `charts` (they never change); transits
+  recomputed every turn and deliberately **never** cached; conversation is a
+  sliding window of the last 20 messages in `messages`. No summarisation, no
+  embeddings, no extracted-facts table.
+
+The banned-phrase list is generated into the prompt from `BANNED_PHRASES`
+rather than written inline, so the list the model is given and the list the
+verifier greps for cannot drift. Writing them inline let the template's line
+wrapping split `"this is your sign to"` across two lines, which silently
+weakened both.
+
+```bash
+python scripts/verify_chat.py    # adversarial, voice, memory; prints transcripts
+```
 
 ## Design notes
 

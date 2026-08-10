@@ -470,16 +470,138 @@ def _to_period(interval: _Interval, lord_slot: int) -> DashaPeriod:
     )
 
 
+def _transit_julian_day(birth: BirthData, moment_utc: _dt.datetime) -> tuple[float, _dt.date]:
+    """Local-clock Julian Day at the birth place for a given UTC instant.
+
+    PyJHora wants a JD encoding the *local wall clock* paired with a Place that
+    carries the offset, so we shift the UTC moment by the birth place's offset
+    and hand back the matching local date for the output's ``as_of``.
+
+    Planetary longitudes are geocentric and do not actually depend on latitude
+    or longitude -- verified: the same JD at Delhi and at Sydney yields
+    identical positions, and only the ascendant moves. The place still matters
+    here because it fixes which UT instant "today" refers to.
+    """
+    local = moment_utc + _dt.timedelta(hours=birth.tz_offset)
+    jd_local = _jhora_utils.julian_day_number(
+        (local.year, local.month, local.day),
+        (local.hour, local.minute, local.second),
+    )
+    return jd_local, local.date()
+
+
 # --------------------------------------------------------------------------
 # Public API
 # --------------------------------------------------------------------------
-def calculate_chart(birth: BirthData, as_of: _dt.date | None = None) -> dict[str, Any]:
-    """Compute the D1 chart and Vimshottari dasha state for ``birth``.
+def calculate_transits(
+    birth: BirthData,
+    natal_ascendant_sign: str,
+    at: _dt.datetime | None = None,
+) -> dict[str, Any]:
+    """Where the nine grahas are *now*, in houses counted from the natal lagna.
+
+    This is gochar: the transiting positions are read against the natal
+    ascendant rather than against a fresh chart cast for the current moment.
+    Only placement is reported -- no benefic/malefic scoring and no
+    transit-to-natal aspects.
+
+    ``calculate_chart`` cannot be reused for this. Its ``as_of`` parameter only
+    selects which dasha period is current; the positions it returns are always
+    natal (verified: the planet list is identical for ``as_of`` 2001 and 2026).
+    So this is a separate path, but it shares every primitive that matters --
+    the same engine lock, the same Lahiri ayanamsa, the same mean-node
+    override and the same Delta T convention -- so a transit position is
+    computed exactly the way a natal one is.
+
+    :param birth: The nativity, used for its place and UTC offset.
+    :param natal_ascendant_sign: Rising sign from the natal chart, e.g. "Virgo".
+        Houses are counted from here.
+    :param at: UTC instant to compute for. Defaults to now. Naive datetimes are
+        assumed to be UTC.
+    :raises InvalidBirthDataError: ``natal_ascendant_sign`` is not a rashi.
+    :raises EphemerisRangeError: The moment lies outside the ephemeris range.
+    """
+    if natal_ascendant_sign not in SIGN_NAMES:
+        raise InvalidBirthDataError(
+            f"unknown ascendant sign {natal_ascendant_sign!r}; "
+            f"expected one of {', '.join(SIGN_NAMES)}"
+        )
+    ascendant_index = SIGN_NAMES.index(natal_ascendant_sign)
+
+    if at is None:
+        at = _dt.datetime.now(_dt.timezone.utc)
+    elif at.tzinfo is not None:
+        at = at.astimezone(_dt.timezone.utc)
+
+    jd_local, local_date = _transit_julian_day(birth, at.replace(tzinfo=None))
+    _assert_within_ephemeris(jd_local, birth.tz_offset)
+    place = _place(birth)
+
+    with _ENGINE_LOCK:
+        _drik.set_ayanamsa_mode(_AYANAMSA_MODE)
+        _swe.set_delta_t_userdef(_DELTA_T_DAYS)
+        chart_rows = _charts.rasi_chart(jd_local, place)
+        node_rows = _node_rows(jd_local, place)
+
+    planets: list[dict[str, Any]] = []
+    moon_nakshatra: str | None = None
+    moon_pada: int | None = None
+    for row in chart_rows:
+        key, (sign_index, degree_in_sign) = row
+        if key == _jhora_const._ascendant_symbol:
+            # The transiting ascendant is meaningless for gochar -- houses come
+            # from the natal lagna -- so it is deliberately dropped.
+            continue
+        index = int(key)
+        if not 0 <= index < len(PLANET_NAMES):
+            raise CalculationError(
+                f"engine returned unexpected body index {index} in the transit chart"
+            )
+        if index in node_rows:
+            sign_index, degree_in_sign = node_rows[index]
+        name = PLANET_NAMES[index]
+        if name == "Moon":
+            # The one transit fact that changes on a human timescale, so it is
+            # surfaced separately rather than left for the caller to dig out.
+            moon_nakshatra, moon_pada = _nakshatra_and_pada(
+                sign_index * 30.0 + degree_in_sign
+            )
+        planets.append(
+            {
+                "name": name,
+                "sign": SIGN_NAMES[sign_index],
+                "house_from_ascendant": _whole_sign_house(sign_index, ascendant_index),
+            }
+        )
+
+    if len(planets) != len(PLANET_NAMES):
+        raise CalculationError(
+            f"expected {len(PLANET_NAMES)} transiting bodies, engine returned {len(planets)}"
+        )
+    if moon_nakshatra is None or moon_pada is None:
+        raise CalculationError("engine returned no transiting Moon position")
+
+    return {
+        "as_of": local_date.isoformat(),
+        "planets": planets,
+        "moon_nakshatra": moon_nakshatra,
+        "moon_pada": moon_pada,
+    }
+
+
+def calculate_chart(
+    birth: BirthData,
+    as_of: _dt.date | None = None,
+    transits_at: _dt.datetime | None = None,
+) -> dict[str, Any]:
+    """Compute the D1 chart, Vimshottari dasha state and current transits.
 
     :param birth: The birth moment and place.
     :param as_of: Date against which "current" mahadasha/antardasha are
         resolved. Defaults to today (UTC). Exposed so results are reproducible
         in tests.
+    :param transits_at: UTC instant for the transit snapshot. Defaults to now.
+        Exposed for the same reason.
     :returns: A JSON-serialisable dict matching the documented output contract.
     :raises EphemerisRangeError: The moment lies outside the ephemeris range.
     :raises CalculationError: The engine returned something we cannot trust.
@@ -586,4 +708,10 @@ def calculate_chart(birth: BirthData, as_of: _dt.date | None = None) -> dict[str
             "current_antardasha": current_antara.as_dict(),
             "full_mahadasha_timeline": [p.as_dict() for p in mahadasha_timeline],
         },
+        # Transits are a snapshot of *now*, so unlike everything above they go
+        # stale. Anything that caches this payload must recompute them with
+        # calculate_transits() rather than serving what is stored here.
+        "transits": calculate_transits(
+            birth, SIGN_NAMES[ascendant_sign], at=transits_at
+        ),
     }
