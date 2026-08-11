@@ -45,6 +45,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Print UTF-8 whatever the console is. On Windows stdout defaults to cp1252,
+# and a redirect to a file keeps that default -- so the first reply containing
+# a character outside it raises UnicodeEncodeError and kills the run. Observed,
+# not hypothetical: the model returned a narrow no-break space (U+202F) in a
+# date and took down turn 1 of 10, after the tokens for it had been spent.
+# errors="replace" rather than strict, because losing a run to an unprintable
+# character is a worse outcome than a substituted glyph in a transcript.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):  # pragma: no cover - TextIOWrapper only
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 from app import db  # noqa: E402
 from app.services import chat_service  # noqa: E402
 from app.services.astrology import (  # noqa: E402
