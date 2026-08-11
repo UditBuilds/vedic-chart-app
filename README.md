@@ -9,6 +9,12 @@ Scope is deliberately thin for v1: **D1 (Rashi) chart + Vimshottari
 Mahadasha/Antardasha**. No divisional charts, no other dasha systems, no
 shadbala, no doshas.
 
+> **Start with [`CONVENTIONS.md`](CONVENTIONS.md)** before changing anything
+> under `app/services/`. Several things in this codebase look like bugs and are
+> deliberate — a non-default ayanamsa, the mean lunar node, and a disabled
+> Delta-T correction among them — and two have tests whose only job is to fail
+> if you "fix" them. It also records the traps that produced those decisions.
+
 ---
 
 ## Licence — please read before deploying
