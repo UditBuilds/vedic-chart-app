@@ -159,6 +159,11 @@ def _print_reply(question: str, reply: str, note: str = "") -> None:
     if note:
         print(f"   [{note}]")
     print(f"\n{reply}\n")
+    artifacts = chat_service.formatting_artifacts_in(reply)
+    if artifacts:
+        # Unlike relevance, this one *is* pass/fail: a citation marker in
+        # user-visible output is simply wrong, at any rate.
+        print(f"   ** CITATION-MARKER LEAK: {artifacts} **")
     mentions = _fact_mentions(reply)
     if mentions:
         rendered = "; ".join(f"{k}: {', '.join(v)}" for k, v in mentions.items())
@@ -206,6 +211,7 @@ def main() -> int:
           f"{_TOTAL_TURNS * TURN_DELAY_SECONDS / 60:.0f} minutes.\n")
 
     banned: list[str] = []
+    leaks: list[str] = []
     try:
         print(SEPARATOR)
         print("1. NARROW - regression check: still ~1-2 facts without the ceiling?")
@@ -216,6 +222,7 @@ def main() -> int:
             reply = _run(connection, "narrow", question)["reply"]
             _print_reply(question, reply)
             banned += chat_service.banned_phrases_in(reply)
+            leaks += chat_service.formatting_artifacts_in(reply)
 
         print(SEPARATOR)
         print("2. BROAD - the case the change is for: relevant, or padded?")
@@ -225,6 +232,7 @@ def main() -> int:
             reply = _run(connection, "broad", question)["reply"]
             _print_reply(question, reply)
             banned += chat_service.banned_phrases_in(reply)
+            leaks += chat_service.formatting_artifacts_in(reply)
 
         print(SEPARATOR)
         print("3. BROAD-SOUNDING, NARROW ANSWER - must not over-cite")
@@ -234,6 +242,7 @@ def main() -> int:
             reply = _run(connection, "adv", question)["reply"]
             _print_reply(question, reply, note)
             banned += chat_service.banned_phrases_in(reply)
+            leaks += chat_service.formatting_artifacts_in(reply)
 
     except MissingAPIKeyError as exc:
         print(f"\nCANNOT RUN: {exc}", file=sys.stderr)
@@ -246,10 +255,16 @@ def main() -> int:
     print(SEPARATOR)
     print("RESULT")
     print(SEPARATOR)
+    failed = False
     if banned:
         print(f"  FAIL: banned phrases appeared: {sorted(set(banned))}")
+        failed = True
+    if leaks:
+        print(f"  FAIL: citation markers appeared: {sorted(set(leaks))}")
+        failed = True
+    if failed:
         return 1
-    print("  No banned phrases.")
+    print("  No banned phrases, no citation markers.")
     print("  Nothing else here is pass/fail. Whether each cited fact earned its")
     print("  place is a judgement call -- read the transcripts above and say so.")
     return 0

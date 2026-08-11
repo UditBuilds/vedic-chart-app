@@ -85,6 +85,19 @@ VOICE_PLAIN_AND_CONTINUOUS: Final[str] = (
     "Short, plain sentences. Reference earlier conversation naturally instead of"
     " re-explaining the chart from scratch each turn."
 )
+#: The model emits its own citation syntax unprompted. Nothing in this prompt
+#: contains a bracket of any kind -- the rendered prompt is pure ASCII -- but
+#: at reasoning_effort="low" it wraps the literal token "FACTS", read off our
+#: own section header, in the fullwidth brackets U+3010/U+3011 it was trained
+#: to cite with. Its own reasoning trace gives the intent away: "Cite facts."
+#: Measured rate before this rule: 5/9 at "low", 2/9 at "medium", 0/9 at
+#: "high". Effort is not the lever to pull -- see llm.py on why "low" is
+#: pinned -- so the instruction is given explicitly instead.
+VOICE_NO_CITATION_MARKERS: Final[str] = (
+    "Write plain prose. Never add citation markers, source tags, footnotes or"
+    " bracketed references of any kind, and never name the FACTS block in your"
+    " reply - it is where your information comes from, not something to cite."
+)
 VOICE_MATCH_TIMESCALE: Final[str] = (
     'Match the fact to the question\'s timescale: life-pattern questions ->'
     ' natal/dasha. "This week/today" questions -> transiting Moon nakshatra or'
@@ -99,6 +112,7 @@ VOICE_RULES: Final[tuple[str, ...]] = (
     VOICE_END_ON_OBSERVATION,
     VOICE_PLAIN_AND_CONTINUOUS,
     VOICE_MATCH_TIMESCALE,
+    VOICE_NO_CITATION_MARKERS,
 )
 
 #: Every rule that must survive into the rendered prompt intact. The line-wrap
@@ -147,10 +161,47 @@ BANNED_PHRASES: Final[tuple[str, ...]] = (
 )
 
 
+#: Citation punctuation the model emits unprompted, as raw codepoints.
+#:
+#: ``openai/gpt-oss-120b`` is trained to cite with fullwidth brackets --
+#: U+3010 and U+3011, with U+2020 as the locator separator in the fuller
+#: ``[source-dagger-line]`` form. Nothing in this prompt contains a bracket of
+#: any kind, so these can only come from the model. Defined here once and
+#: reported by :func:`formatting_artifacts_in`, so the characters the tests
+#: and the verifier look for cannot drift apart -- the same reasoning as
+#: :data:`BANNED_PHRASES`.
+#:
+#: Deliberately does *not* include U+2011 (non-breaking hyphen), U+202F
+#: (narrow no-break space) or U+2019 (curly apostrophe). The model emits all
+#: three routinely in dates and contractions; they are typography, not
+#: artifacts, and flagging them would bury the signal.
+FORMATTING_ARTIFACTS: Final[tuple[str, ...]] = (
+    "【",  # LEFT BLACK LENTICULAR BRACKET
+    "】",  # RIGHT BLACK LENTICULAR BRACKET
+    "†",  # DAGGER, the locator separator in the fuller citation form
+)
+
+
 def banned_phrases_in(text: str) -> list[str]:
     """Which forbidden phrases appear in ``text``, case-insensitively."""
     lowered = text.lower()
     return [phrase for phrase in BANNED_PHRASES if phrase in lowered]
+
+
+def formatting_artifacts_in(text: str) -> list[str]:
+    """Which citation-marker codepoints appear in ``text``.
+
+    A detector, not a filter -- deliberately. This codebase's convention is to
+    surface a bad reply rather than quietly launder it: an empty completion is
+    raised as an error instead of returned blank, and banned phrases are
+    reported by the verifier rather than stripped. Silently deleting the
+    marker would leave us unable to notice if the underlying behaviour came
+    back, or if it started producing an artifact we have not seen.
+
+    :returns: the offending codepoints, as ``U+XXXX`` strings, in the order
+        listed in :data:`FORMATTING_ARTIFACTS`.
+    """
+    return [f"U+{ord(char):04X}" for char in FORMATTING_ARTIFACTS if char in text]
 
 
 def _render_banned_list() -> str:

@@ -304,6 +304,64 @@ def test_full_mahadasha_sequence_reaches_the_facts(chart) -> None:
     assert "Full mahadasha sequence" in rendered
 
 
+# -------------------------------------------------------- citation markers
+#
+# Observed live, three times in one verification run: replies carried a
+# literal fullwidth-bracket citation marker around the token "FACTS", read off
+# our own section header. Nothing in the prompt contains a bracket -- the
+# rendered prompt is pure ASCII -- so the model generates it. Measured rate
+# before the rule, same questions and effort: 5/9 at "low", 2/9 at "medium",
+# 0/9 at "high"; 0/15 after.
+
+
+def test_the_rendered_prompt_is_pure_ascii(chart, transits) -> None:
+    """The premise of the diagnosis, pinned.
+
+    The citation marker cannot be something the model echoed back if we never
+    sent a non-ASCII character. If this ever fails, that reasoning is void and
+    the leak has to be re-investigated rather than assumed understood.
+    """
+    prompt = chat_service.build_system_prompt(chart, transits, [])
+    offenders = sorted({c for c in prompt if ord(c) > 127})
+    assert not offenders, (
+        f"prompt is no longer pure ASCII: {[hex(ord(c)) for c in offenders]}"
+    )
+
+
+def test_prompt_forbids_citation_markers(chart, transits) -> None:
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "never add citation markers" in prompt
+    assert "never name the facts block in your reply" in prompt
+
+
+@pytest.mark.parametrize("artifact", chat_service.FORMATTING_ARTIFACTS)
+def test_artifact_detector_catches_each_codepoint(artifact) -> None:
+    found = chat_service.formatting_artifacts_in(f"Rahu begins 2032{artifact} then.")
+    assert found == [f"U+{ord(artifact):04X}"]
+
+
+def test_artifact_detector_catches_the_exact_observed_leak() -> None:
+    """Verbatim from the transcript that started this."""
+    leaked = (
+        "You are in the Mars Mahadasha (2025-07-05 to 2032-07-05) with Rahu "
+        "antardasha active (2025-12-01 to 2026-12-20)【FACTS】."
+    )
+    assert chat_service.formatting_artifacts_in(leaked) == ["U+3010", "U+3011"]
+
+
+def test_ordinary_typography_is_not_flagged() -> None:
+    """The model emits these constantly; flagging them would bury the signal.
+
+    A non-breaking hyphen in a date, a narrow no-break space and a curly
+    apostrophe are not artifacts -- the narrow no-break space is the character
+    that crashed a verification run, and it is still legitimate output.
+    """
+    typographic = (
+        "Rahu’s period runs 2032‑07‑05 to 2050‑07‑06."
+    )
+    assert chat_service.formatting_artifacts_in(typographic) == []
+
+
 # ------------------------------------------------------ fact-citation rule
 #
 # The flat "two chart facts maximum" was replaced by a relevance principle.
