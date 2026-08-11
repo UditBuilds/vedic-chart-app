@@ -395,6 +395,10 @@ def test_the_ceiling_is_stated_as_hard_and_countable(chart, transits) -> None:
     prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
     assert "hard ceiling, not an average" in prompt
     assert "counts every planet you name" in prompt
+    # The explicit self-check. Without it the worst broad question ("give me a
+    # general read on where I'm at right now") sat at 5-8 planets every run;
+    # with it, 11 of 12 broad replies came in at four or fewer.
+    assert "count the chart facts you are about to cite" in prompt
 
 
 def test_rule_pushes_significance_over_category_completeness(chart, transits) -> None:
@@ -414,6 +418,40 @@ def test_rule_pushes_significance_over_category_completeness(chart, transits) ->
 def test_prompt_forbids_inventing_relationships(chart, transits) -> None:
     prompt = chat_service.build_system_prompt(chart, transits, []).lower()
     assert "never state a relationship, comparison, sequence, or change" in prompt
+
+
+def test_prompt_forbids_inventing_unstated_dasha_structure(chart, transits) -> None:
+    """Third fabrication class: sub-period structure that was never computed.
+
+    FACTS carries every mahadasha's start and end date but exactly one
+    antardasha, the running one. Two observed shapes, measured over four runs
+    each before the rule: "the antardasha sequence will restart under Rahu's
+    sub-periods" (2/4), and "your next antardasha begins 2026-12-20 and it is
+    Jupiter" (3/4). The second is the dangerous one -- Jupiter is *correct* by
+    the standard Vimshottari order, which is exactly why it reads as grounded.
+    Nothing in this service computed it.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "facts gives exactly one antardasha" in prompt
+    assert "never name, date, sequence or describe any other sub-period" in prompt
+    # The mechanism, named explicitly -- the model knows the order independently.
+    assert "you know the vimshottari order from your own training" in prompt
+    # And the specific question shape that survived the first wording.
+    assert "asked which sub-period comes next" in prompt
+
+
+def test_the_facts_block_really_does_carry_only_one_antardasha(chart) -> None:
+    """The rule's premise, pinned against the formatter.
+
+    If FACTS ever starts carrying a full antardasha sequence, the rule above
+    becomes wrong rather than merely unnecessary -- it would be instructing the
+    model to withhold something it was given. This fails first in that case.
+    """
+    rendered = facts.format_dasha(chart).lower()
+    assert rendered.count("antardasha") == 1, (
+        "FACTS now mentions antardasha more than once; "
+        "RULE_NO_UNSTATED_DASHA_STRUCTURE assumes exactly one is given"
+    )
 
 
 def test_prompt_states_that_a_dasha_change_moves_no_planet(chart, transits) -> None:

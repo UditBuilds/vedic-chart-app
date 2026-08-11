@@ -415,17 +415,30 @@ verifier greps for cannot drift. Writing them inline let the template's line
 wrapping split `"this is your sign to"` across two lines, which silently
 weakened both.
 
-How many facts a reply cites is scaled to the question rather than capped at a
-number. A flat "two chart facts maximum" was tried and removed: it held for
-narrow questions and broke on broad ones — answering "How is this week looking?"
-honestly needed five facts, and the ceiling could only be met by dropping a
-relevant one. `VOICE_FACT_RELEVANCE` asks for what the question needs and
-nothing more; one or two is still the expectation for a narrow question.
+How many facts a reply cites is a **scaled ceiling**: one or two for a narrow
+question, at most four for a broad one. Both simpler versions were tried and
+both measured worse. A flat "two chart facts maximum" broke on broad questions —
+"How is this week looking?" needed five facts and the cap could only be met by
+dropping a relevant one. Removing the number entirely was worse still: the same
+question went to **all nine** transiting bodies, because the model read
+"relevant" as "shares the timeframe", and every transit does. The current rule
+carries a number *and* a significance ordering (dasha lord for period questions,
+transiting Moon for today/this week). `CONVENTIONS.md` has the measurements.
 
-Whether that lands is **not** something the test suite can settle — "relevant"
-versus "padding" is a judgement about a specific answer. The tests pin the rule
-text and guard against a fixed ceiling returning; the transcripts are what
-decide it.
+Two model behaviours are worth knowing about because they are not obvious:
+
+- **It emits its own citation markers.** Replies arrived carrying a fullwidth
+  bracket citation wrapped around the token `FACTS`, read off our own section
+  header — no Groq citation feature involved, and the prompt we send is pure
+  ASCII. It is inversely correlated with `reasoning_effort` (5/9 at `low`, 0/9
+  at `high`). Handled by an explicit rule plus a detector, not by stripping.
+- **It completes dasha structure we never computed.** FACTS carries one
+  antardasha; asked what comes next, the model supplied the answer from the
+  standard Vimshottari order — *correctly*, which is what makes it dangerous.
+
+Whether any of this lands is **not** something the test suite can settle —
+"relevant" versus "padding" is a judgement about a specific answer. The tests
+pin the rule text and the guards; the transcripts are what decide it.
 
 ```bash
 python scripts/verify_chat.py             # adversarial, voice, memory

@@ -243,42 +243,124 @@ on purpose.
 **When adding a rule: define a constant, add it to `PROMPT_RULES`, interpolate
 it. Do not type it into the template.**
 
-### Fact citation is scaled to the question, not capped at a number
+### Fact citation: a scaled ceiling, arrived at the hard way
 
-`VOICE_FACT_RELEVANCE`, `chat_service.py:74`. Cite what the question needs;
-nothing more. One or two remains the expected number for a narrow, single-topic
-question, and a broad one may cite more — but every fact has to be justifiable
-against what was actually asked. Breadth of phrasing is not a licence to dump
-the chart.
+`VOICE_FACT_RELEVANCE`, `chat_service.py:111`. One or two chart facts for a
+narrow question, at most four for a broad one, stated as a hard ceiling and
+counted in planets named.
 
-This replaced a flat `VOICE_TWO_FACTS` ("two chart facts maximum per message"),
-which was recorded here for two releases as an unresolved tension because it
-**was not reliably obeyed**: an observed answer to "How is this week looking?"
-cited the Moon, Mars, Sun, Mercury and Jupiter. The diagnosis that matters is
-that the model was **right and the rule was wrong** — those five facts were
-correct and the question needed them. A hard ceiling on a broad question can
-only be met by dropping something relevant, so the rule was asking for a worse
-answer. Removing the number and keeping the principle is the fix.
+**This rule has been wrong twice. Both failures are the argument for its
+current shape, so do not "simplify" it back into either of them.**
+
+1. **A flat cap** — "two chart facts maximum per message". Held for narrow
+   questions, broke on broad ones: answering "How is this week looking?"
+   honestly needed five facts, and the ceiling could only be met by dropping a
+   relevant one. Recorded here for two releases as an unresolved tension.
+2. **A pure relevance principle, no number** — "cite what the question needs".
+   This measured **worse than the flat cap it replaced.** "How is this week
+   looking?" went from five facts to **all nine** transiting bodies, walked in
+   FACTS order, Ketu included. The model read "relevant" as "shares the
+   timeframe I was asked about", and every transit shares today's timeframe, so
+   the whole block qualified.
+
+The lesson is that a number is load-bearing — a principle with no ceiling gave
+the model nothing to stop against — but a number alone is not enough either.
+With a ceiling and no tie-break it filled the quota positionally. What fixed it
+was adding a significance ordering: the dasha lord for period questions, the
+transiting Moon for today/this week (the fastest-moving body, so the one that
+actually distinguishes this week from last), otherwise whatever matches the
+question's own theme. Plus a behavioural trigger, "if you are listing
+placements one after another, you have already broken this rule."
+
+Measured facts per reply across the three broad questions — flat cap, no cap,
+ceiling without tie-break, current rule:
+
+| Question | flat | none | +ceiling | current |
+|---|---|---|---|---|
+| How is this week looking? | 5 | 9 | 4 | 2 |
+| Overall shape of this period? | — | ~4 | 2 | 2 |
+| General read on where I'm at? | — | ~10 | 8 | 5 |
 
 Two things to know before touching it:
 
-- **The removed ceiling has a guard.** `test_no_hard_ceiling_on_the_number_of_facts`
-  fails if a fixed count comes back in any of its usual phrasings. It was proven
-  to fail by reinstating the old constant, and to pass once reverted.
+- **Guards exist and were proven by injection.** `test_the_ceiling_is_scaled_not_flat`,
+  `test_the_ceiling_is_stated_as_hard_and_countable` and
+  `test_rule_pushes_significance_over_category_completeness` all fail if the
+  flat two-fact cap is reinstated.
 - **This one does not reduce to a passing test.** Whether a cited fact is
   relevant or is padding is a judgement call on the specific answer. The tests
   pin the rule's *text*; `scripts/verify_fact_relevance.py` lays out the
-  transcripts a human has to read — narrow questions (does anything bloat now
-  the cap is gone?), broad ones (is each fact earned?), and one deliberately
-  broad-*sounding* question whose honest answer is a single fact. Its
-  fact-mention tally is a counting aid and says so; it has no opinion on
-  relevance. Do not report this rule as verified on a green test run.
+  transcripts a human has to read. Its fact-mention tally is a counting aid and
+  says so. Do not report this rule as verified on a green test run.
 
 Kept separate from `verify_chat.py` on purpose: that script's turn budget is
 already paced to the edge of the free tier — see the note under
 [Rate limits](#rate-limits-and-the-pacing-they-force). This one carries its own
-arithmetic (10 turns, 25s apart, ~7,100 tokens/min against the 8,000 ceiling;
-25s rather than 22s because the new rule costs ~60 more prompt tokens a turn).
+arithmetic (10 turns, 25s apart, ~7,100 tokens/min against the 8,000 ceiling).
+
+### The model emits its own citation markers
+
+`VOICE_NO_CITATION_MARKERS`, `chat_service.py:136`, with the detector
+`formatting_artifacts_in()` at `chat_service.py:234`.
+
+Replies were arriving with a literal fullwidth-bracket citation marker wrapped
+around the token `FACTS` — U+3010/U+3011, read off our own section header.
+Investigated rather than stripped, and the investigation is worth not
+repeating:
+
+- **No Groq feature is involved.** The request carries five keys. No tools, no
+  `tool_choice`, no `search_settings`, no compound/agentic mode. In the full raw
+  response, `annotations`, `executed_tools`, `tool_calls` and `mcp_list_tools`
+  are all `null`.
+- **We are not being echoed.** The rendered system prompt is **pure ASCII** —
+  pinned now by `test_the_rendered_prompt_is_pure_ascii`, which exists so this
+  premise cannot rot silently. Fullwidth brackets appear nowhere in this repo.
+- **The model generates it.** `openai/gpt-oss-120b` is trained to cite in that
+  format and treats our `FACTS:` header as a source name. Its reasoning trace
+  says so in as many words: *"Cite facts."*
+- **It is inversely correlated with `reasoning_effort`**: 5/9 at `low`
+  (production), 2/9 at `medium`, 0/9 at `high`. Effort is not the lever — see
+  [reasoning_effort](#reasoning_effortlow-specifically) for why `low` is pinned.
+
+The rule alone took it to 0/15 on the same questions, and 0/13 across a wider
+set. Deliberately a **detector, not a stripper**: this codebase surfaces a bad
+reply rather than laundering it — an empty completion raises instead of
+returning blank, and banned phrases are reported rather than deleted. Silently
+deleting the marker would leave us unable to notice the behaviour returning.
+The detector ignores ordinary typography the model emits constantly
+(non-breaking hyphen, narrow no-break space, curly apostrophe); a test pins
+that, because flagging those would bury the signal.
+
+### Never describe a dasha sub-period that was not computed
+
+`RULE_NO_UNSTATED_DASHA_STRUCTURE`, `chat_service.py:77`.
+
+The third fabrication class, after the movement one and the ordinal one. FACTS
+carries every mahadasha's start and end date but **exactly one antardasha, the
+running one**. The model fills the gap from the Vimshottari order it knows
+independently and states the result as chart fact. Two shapes, four runs each:
+
+| Fabrication | Rate |
+|---|---|
+| "The antardasha sequence will restart under Rahu's sub-periods" | 2/4 |
+| "Your next antardasha begins 2026-12-20 and it is Jupiter" | 3/4 |
+
+**The second is the dangerous one, because Jupiter is correct** — it is what
+the standard sequence gives. That is precisely why it reads as grounded. It is
+still not a fact about this chart and nothing here computed it. A fabrication
+that happens to be right is not a smaller problem; it is a harder one to catch.
+
+Worth knowing what is *not* in this class: the model already declines future
+transits and future sub-periods unprompted, and gets arithmetic on the given
+dates right. Five of seven probes were clean before any rule existed. The class
+is narrow but intermittent, which is why the rate was measured over repeats
+rather than judged from one run.
+
+After the rule, 0/16 across the same probes. `test_prompt_forbids_inventing_unstated_dasha_structure`
+guards the rule text; `test_the_facts_block_really_does_carry_only_one_antardasha`
+guards its *premise* — if the formatter ever starts emitting a full antardasha
+sequence, the rule becomes actively wrong rather than merely unnecessary, and
+that test fails first. Both proven by injection.
 
 The timescale-matching rule, `VOICE_MATCH_TIMESCALE`, is unchanged and still
 governs *which* facts a question reaches for. This rule governs how many.

@@ -62,6 +62,30 @@ RULE_NO_RELATIONSHIPS: Final[str] = (
     " life."
 )
 
+#: A third fabrication class, distinct from the movement and ordinal ones.
+#: FACTS carries every mahadasha's start and end date but exactly one
+#: antardasha -- the running one. The model fills the gap from the Vimshottari
+#: order it knows independently, and states the result as though it came from
+#: the chart. Two shapes, both measured:
+#:
+#:   "The antardasha sequence will restart under Rahu's sub-periods"   2/4
+#:   "Your next antardasha begins 2026-12-20 and it is Jupiter"        3/4
+#:
+#: The second is the more dangerous of the two, because Jupiter is *correct*
+#: by the standard sequence -- which is exactly why it reads as grounded. It
+#: is still not a fact about this chart, and nothing here computed it.
+RULE_NO_UNSTATED_DASHA_STRUCTURE: Final[str] = (
+    "FACTS gives exactly one antardasha: the one running now. Never name, date,"
+    " sequence or describe any other sub-period - not the one that follows the"
+    " running antardasha, and not the contents of any later mahadasha. You know"
+    " the Vimshottari order from your own training; that is not a fact about"
+    " this chart, and stating it as one is inventing. For every mahadasha other"
+    " than the current one you have its start and end dates and nothing else -"
+    " give those and stop. Asked which sub-period comes next or when it starts,"
+    " say it is not calculated: knowing when the current one ends tells you"
+    " nothing about what follows it."
+)
+
 VOICE_GROUNDED: Final[str] = (
     "Calm and specific. Ground any claim about how someone might feel in a fact"
     " first."
@@ -92,7 +116,9 @@ VOICE_FACT_RELEVANCE: Final[str] = (
     " already broken this rule. Choose by significance: the current dasha lord"
     " for questions about this period, the transiting Moon for today or this"
     " week, otherwise the fact that most directly matches what was asked. Leave"
-    " everything else out, even if it is true."
+    " everything else out, even if it is true. Before you answer, count the"
+    " chart facts you are about to cite; if there are more than four, drop the"
+    " least important ones until there are not."
 )
 VOICE_END_ON_OBSERVATION: Final[str] = (
     "End on an observation, not an affirmation."
@@ -138,6 +164,7 @@ PROMPT_RULES: Final[tuple[str, ...]] = (
     ROLE,
     RULE_NO_INVENTION,
     RULE_NO_RELATIONSHIPS,
+    RULE_NO_UNSTATED_DASHA_STRUCTURE,
 ) + VOICE_RULES
 
 #: Structure only. All prose lives in the constants above -- see the note there,
@@ -146,6 +173,8 @@ SYSTEM_PROMPT_TEMPLATE: Final[str] = """\
 {role} {rule_no_invention}
 
 {rule_no_relationships}
+
+{rule_no_unstated_dasha_structure}
 
 Voice:
 {voice_block}
@@ -283,6 +312,7 @@ def build_system_prompt(
         role=ROLE,
         rule_no_invention=RULE_NO_INVENTION,
         rule_no_relationships=RULE_NO_RELATIONSHIPS,
+        rule_no_unstated_dasha_structure=RULE_NO_UNSTATED_DASHA_STRUCTURE,
         voice_block=_render_voice_block(),
         natal_summary=facts.format_natal(chart),
         dasha_summary=facts.format_dasha(chart),
