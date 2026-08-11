@@ -66,17 +66,33 @@ VOICE_GROUNDED: Final[str] = (
     "Calm and specific. Ground any claim about how someone might feel in a fact"
     " first."
 )
-#: Relevance, not a count. The flat "two facts maximum" this replaced held for
-#: narrow questions and broke on broad ones: answering "How is this week
-#: looking?" honestly needed the Moon, Mars, Sun, Mercury and Jupiter, so the
-#: cap forced either an incomplete answer or an arbitrary drop. A ceiling
-#: cannot know how many facts a question needs; the question can.
+#: A scaled ceiling, and the third attempt at this rule. Its history is the
+#: argument for the current shape, so it is worth keeping:
+#:
+#: 1. "Two chart facts maximum per message." Held for narrow questions, broke
+#:    on broad ones -- "How is this week looking?" needed five facts, and the
+#:    cap could only be met by dropping a relevant one.
+#: 2. Pure relevance, no number: "cite what the question needs". Measured
+#:    worse than the thing it replaced. "How is this week looking?" went to
+#:    **all nine** transiting bodies, in FACTS order, Ketu included. The model
+#:    read "relevant" as "in the timeframe asked about", and since every
+#:    transit shares today's timeframe, the whole block qualified.
+#:
+#: So a number is load-bearing after all -- a principle with no ceiling gave
+#: the model nothing to stop against. What it needs on top is a tie-break, or
+#: it fills the quota positionally: the dasha lord for period questions, the
+#: transiting Moon for day/week ones (fastest-moving body, so the one that
+#: actually distinguishes this week from last), and otherwise whatever matches
+#: the question's own theme. Category membership is explicitly not relevance.
 VOICE_FACT_RELEVANCE: Final[str] = (
-    "Cite only the facts that directly answer what was asked. For a narrow"
-    " question that is usually one or two. A broad question - \"how is this week"
-    " looking\" - may need several, but every fact you cite has to earn its"
-    " place: don't pad with facts the question didn't ask for, and don't drop"
-    " one it needs. Never data-dump the chart."
+    "Cite one or two chart facts for a narrow question and at most four for a"
+    " broad one. This is a hard ceiling, not an average, and it counts every"
+    " planet you name. Sharing a timeframe with the question does not make a"
+    " fact relevant - if you are listing placements one after another, you have"
+    " already broken this rule. Choose by significance: the current dasha lord"
+    " for questions about this period, the transiting Moon for today or this"
+    " week, otherwise the fact that most directly matches what was asked. Leave"
+    " everything else out, even if it is true."
 )
 VOICE_END_ON_OBSERVATION: Final[str] = (
     "End on an observation, not an affirmation."

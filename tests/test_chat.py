@@ -371,26 +371,44 @@ def test_ordinary_typography_is_not_flagged() -> None:
 # real transcripts, which is what scripts/verify_fact_relevance.py exists for.
 
 
-def test_no_hard_ceiling_on_the_number_of_facts(chart, transits) -> None:
-    """A fixed cap forces an incomplete answer to a broad question.
+def test_the_ceiling_is_scaled_not_flat(chart, transits) -> None:
+    """Two numbers, not one. Both previous shapes of this rule failed.
 
-    Observed: "How is this week looking?" needed the Moon, Mars, Sun, Mercury
-    and Jupiter to answer honestly, and the two-fact ceiling could only be met
-    by dropping something relevant.
+    A single flat cap ("two chart facts maximum") forces an incomplete answer
+    to a broad question. No cap at all measured worse still -- "How is this
+    week looking?" went to all nine transiting bodies, because every transit
+    shares the timeframe the question asked about, so the model read the whole
+    block as relevant. The rule has to carry a narrow number and a broad one.
     """
     prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
-    for ceiling in ("two chart facts maximum", "facts maximum per message",
-                    "at most two facts", "maximum of two"):
-        assert ceiling not in prompt, f"a hard fact ceiling is back: {ceiling!r}"
+    assert "one or two chart facts for a narrow question" in prompt
+    assert "at most four for a broad one" in prompt
+    # ...and the old flat cap must not creep back in any of its phrasings.
+    for flat in ("two chart facts maximum", "facts maximum per message",
+                 "at most two facts", "maximum of two"):
+        assert flat not in prompt, f"the flat ceiling is back: {flat!r}"
 
 
-def test_prompt_scales_citation_to_the_question(chart, transits) -> None:
-    """Relevance in both directions: don't pad, don't drop."""
+def test_the_ceiling_is_stated_as_hard_and_countable(chart, transits) -> None:
+    """"Roughly N" gave the model room to round upward; "hard" plus a unit it
+    can actually count against did not."""
     prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
-    assert "cite only the facts that directly answer what was asked" in prompt
-    assert "usually one or two" in prompt, "narrow questions still expect one or two"
-    assert "don't pad with facts the question didn't ask for" in prompt
-    assert "don't drop one it needs" in prompt
+    assert "hard ceiling, not an average" in prompt
+    assert "counts every planet you name" in prompt
+
+
+def test_rule_pushes_significance_over_category_completeness(chart, transits) -> None:
+    """The observed failure was enumeration, so the rule needs a tie-break.
+
+    Without one the model fills the quota positionally -- it walked the transit
+    block in FACTS order. Naming which fact wins for which question shape is
+    what stopped it.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "sharing a timeframe with the question does not make a fact relevant" in prompt
+    assert "listing placements one after another" in prompt
+    assert "the current dasha lord for questions about this period" in prompt
+    assert "the transiting moon for today or this week" in prompt
 
 
 def test_prompt_forbids_inventing_relationships(chart, transits) -> None:
