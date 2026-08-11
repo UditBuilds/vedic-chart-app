@@ -304,6 +304,37 @@ def test_full_mahadasha_sequence_reaches_the_facts(chart) -> None:
     assert "Full mahadasha sequence" in rendered
 
 
+# ------------------------------------------------------ fact-citation rule
+#
+# The flat "two chart facts maximum" was replaced by a relevance principle.
+# These pin the replacement's two halves so neither can be lost: the cap is
+# gone, and the scaling language that took its place is present. Neither test
+# can settle whether the *model* now cites well -- that is a judgement call on
+# real transcripts, which is what scripts/verify_fact_relevance.py exists for.
+
+
+def test_no_hard_ceiling_on_the_number_of_facts(chart, transits) -> None:
+    """A fixed cap forces an incomplete answer to a broad question.
+
+    Observed: "How is this week looking?" needed the Moon, Mars, Sun, Mercury
+    and Jupiter to answer honestly, and the two-fact ceiling could only be met
+    by dropping something relevant.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    for ceiling in ("two chart facts maximum", "facts maximum per message",
+                    "at most two facts", "maximum of two"):
+        assert ceiling not in prompt, f"a hard fact ceiling is back: {ceiling!r}"
+
+
+def test_prompt_scales_citation_to_the_question(chart, transits) -> None:
+    """Relevance in both directions: don't pad, don't drop."""
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "cite only the facts that directly answer what was asked" in prompt
+    assert "usually one or two" in prompt, "narrow questions still expect one or two"
+    assert "don't pad with facts the question didn't ask for" in prompt
+    assert "don't drop one it needs" in prompt
+
+
 def test_prompt_forbids_inventing_relationships(chart, transits) -> None:
     prompt = chat_service.build_system_prompt(chart, transits, []).lower()
     assert "never state a relationship, comparison, sequence, or change" in prompt

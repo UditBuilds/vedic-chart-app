@@ -66,8 +66,17 @@ VOICE_GROUNDED: Final[str] = (
     "Calm and specific. Ground any claim about how someone might feel in a fact"
     " first."
 )
-VOICE_TWO_FACTS: Final[str] = (
-    "Two chart facts maximum per message. Don't data-dump the chart."
+#: Relevance, not a count. The flat "two facts maximum" this replaced held for
+#: narrow questions and broke on broad ones: answering "How is this week
+#: looking?" honestly needed the Moon, Mars, Sun, Mercury and Jupiter, so the
+#: cap forced either an incomplete answer or an arbitrary drop. A ceiling
+#: cannot know how many facts a question needs; the question can.
+VOICE_FACT_RELEVANCE: Final[str] = (
+    "Cite only the facts that directly answer what was asked. For a narrow"
+    " question that is usually one or two. A broad question - \"how is this week"
+    " looking\" - may need several, but every fact you cite has to earn its"
+    " place: don't pad with facts the question didn't ask for, and don't drop"
+    " one it needs. Never data-dump the chart."
 )
 VOICE_END_ON_OBSERVATION: Final[str] = (
     "End on an observation, not an affirmation."
@@ -86,7 +95,7 @@ VOICE_MATCH_TIMESCALE: Final[str] = (
 #: separately because it expands into many lines.
 VOICE_RULES: Final[tuple[str, ...]] = (
     VOICE_GROUNDED,
-    VOICE_TWO_FACTS,
+    VOICE_FACT_RELEVANCE,
     VOICE_END_ON_OBSERVATION,
     VOICE_PLAIN_AND_CONTINUOUS,
     VOICE_MATCH_TIMESCALE,

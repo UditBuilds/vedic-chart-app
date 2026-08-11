@@ -243,15 +243,45 @@ on purpose.
 **When adding a rule: define a constant, add it to `PROMPT_RULES`, interpolate
 it. Do not type it into the template.**
 
-### Open tension: two chart facts per message
+### Fact citation is scaled to the question, not capped at a number
 
-`VOICE_TWO_FACTS`, `chat_service.py:69`, asks for at most two chart facts per
-reply. **This is not reliably obeyed** — an observed answer to "How is this week
-looking?" cited the Moon, Mars, Sun, Mercury and Jupiter.
+`VOICE_FACT_RELEVANCE`, `chat_service.py:74`. Cite what the question needs;
+nothing more. One or two remains the expected number for a narrow, single-topic
+question, and a broad one may cite more — but every fact has to be justifiable
+against what was actually asked. Breadth of phrasing is not a licence to dump
+the chart.
 
-Recorded here as a known, unresolved tension rather than a settled rule. It is a
-voice problem, not a grounding one: the facts cited were correct. If you tighten
-it, do it deliberately and re-run the transcripts.
+This replaced a flat `VOICE_TWO_FACTS` ("two chart facts maximum per message"),
+which was recorded here for two releases as an unresolved tension because it
+**was not reliably obeyed**: an observed answer to "How is this week looking?"
+cited the Moon, Mars, Sun, Mercury and Jupiter. The diagnosis that matters is
+that the model was **right and the rule was wrong** — those five facts were
+correct and the question needed them. A hard ceiling on a broad question can
+only be met by dropping something relevant, so the rule was asking for a worse
+answer. Removing the number and keeping the principle is the fix.
+
+Two things to know before touching it:
+
+- **The removed ceiling has a guard.** `test_no_hard_ceiling_on_the_number_of_facts`
+  fails if a fixed count comes back in any of its usual phrasings. It was proven
+  to fail by reinstating the old constant, and to pass once reverted.
+- **This one does not reduce to a passing test.** Whether a cited fact is
+  relevant or is padding is a judgement call on the specific answer. The tests
+  pin the rule's *text*; `scripts/verify_fact_relevance.py` lays out the
+  transcripts a human has to read — narrow questions (does anything bloat now
+  the cap is gone?), broad ones (is each fact earned?), and one deliberately
+  broad-*sounding* question whose honest answer is a single fact. Its
+  fact-mention tally is a counting aid and says so; it has no opinion on
+  relevance. Do not report this rule as verified on a green test run.
+
+Kept separate from `verify_chat.py` on purpose: that script's turn budget is
+already paced to the edge of the free tier — see the note under
+[Rate limits](#rate-limits-and-the-pacing-they-force). This one carries its own
+arithmetic (10 turns, 25s apart, ~7,100 tokens/min against the 8,000 ceiling;
+25s rather than 22s because the new rule costs ~60 more prompt tokens a turn).
+
+The timescale-matching rule, `VOICE_MATCH_TIMESCALE`, is unchanged and still
+governs *which* facts a question reaches for. This rule governs how many.
 
 ---
 

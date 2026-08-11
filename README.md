@@ -336,7 +336,7 @@ contains no `os.environ`, `getenv`, `api_key` or `requests.` usage.
 python -m pytest -q
 ```
 
-164 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
+195 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
 read first — the dasha boundary maths is where an off-by-one is most likely and
 least visible. `tests/test_conventions.py` pins the two deliberate departures
 above; `tests/test_transits.py` holds the AstroSage transit fixtures.
@@ -415,9 +415,25 @@ verifier greps for cannot drift. Writing them inline let the template's line
 wrapping split `"this is your sign to"` across two lines, which silently
 weakened both.
 
+How many facts a reply cites is scaled to the question rather than capped at a
+number. A flat "two chart facts maximum" was tried and removed: it held for
+narrow questions and broke on broad ones — answering "How is this week looking?"
+honestly needed five facts, and the ceiling could only be met by dropping a
+relevant one. `VOICE_FACT_RELEVANCE` asks for what the question needs and
+nothing more; one or two is still the expectation for a narrow question.
+
+Whether that lands is **not** something the test suite can settle — "relevant"
+versus "padding" is a judgement about a specific answer. The tests pin the rule
+text and guard against a fixed ceiling returning; the transcripts are what
+decide it.
+
 ```bash
-python scripts/verify_chat.py    # adversarial, voice, memory; prints transcripts
+python scripts/verify_chat.py             # adversarial, voice, memory
+python scripts/verify_fact_relevance.py   # narrow / broad / broad-sounding citation
 ```
+
+Both print transcripts in full and need `GROQ_API_KEY`. Read them; neither
+returns a verdict on grounding or relevance.
 
 ## Design notes
 
