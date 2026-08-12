@@ -245,9 +245,10 @@ it. Do not type it into the template.**
 
 ### Fact citation: a scaled ceiling, arrived at the hard way
 
-`VOICE_FACT_RELEVANCE`, `chat_service.py:111`. One or two chart facts for a
+`VOICE_FACT_RELEVANCE`, `chat_service.py:145`. One or two chart facts for a
 narrow question, at most four for a broad one, stated as a hard ceiling and
-counted in planets named.
+counted in planets named — **with bodies sharing a house or sign counting as
+one fact, not one apiece.**
 
 **This rule has been wrong twice. Both failures are the argument for its
 current shape, so do not "simplify" it back into either of them.**
@@ -281,12 +282,45 @@ ceiling without tie-break, current rule:
 | Overall shape of this period? | — | ~4 | 2 | 2 |
 | General read on where I'm at? | — | ~10 | 8 | 5 |
 
+### The overshoot that survived the ceiling: shared-house enumeration
+
+Measured over 28 runs of the three broad questions, **every reply citing six
+or more facts failed the same way** — it walked the occupants of one crowded
+house one at a time, giving each its own clause and its own meaning:
+
+> "…the transiting Moon sits in Cancer in the 11th house… **The Sun, Mercury
+> and Jupiter also occupy that same 11th house**, adding clarity, communication
+> and optimism…"
+
+That is a single observation eating four of the four available citations. The
+clause added to `VOICE_FACT_RELEVANCE` makes bodies sharing a house or sign
+count once, named together in one phrase. Distribution on the worst question
+before and after, ten runs each:
+
+| | distribution | max |
+|---|---|---|
+| before | 4,9,4,4,4,4,8,4,4,4,4,4,4,4,6,8,5,7 (18 runs) | **9** |
+| after | 4,4,5,6,4,5,4,4,5,4 | **6** |
+
+Two honest caveats, because the numbers flatter the change slightly:
+
+- **It partly redefines the metric.** Under the old per-body count some replies
+  scored 5 where they now score 2. The behavioural change is real regardless —
+  the model now writes one grouped phrase instead of a clause per body — but
+  this is not a pure reduction and should not be quoted as one.
+- **It does not address the other overshoot shape.** The residual 5s and the
+  one 6 are not enumeration; they cite the dasha lords' natal placements
+  alongside the dasha and the transiting Moon. Every one of those facts is
+  individually defensible. That shape was never in this clause's scope and is
+  still open.
+
 Two things to know before touching it:
 
 - **Guards exist and were proven by injection.** `test_the_ceiling_is_scaled_not_flat`,
-  `test_the_ceiling_is_stated_as_hard_and_countable` and
-  `test_rule_pushes_significance_over_category_completeness` all fail if the
-  flat two-fact cap is reinstated.
+  `test_the_ceiling_is_stated_as_hard_and_countable`,
+  `test_rule_pushes_significance_over_category_completeness` and
+  `test_shared_house_bodies_count_as_one_fact` all fail if the
+  flat two-fact cap is reinstated or the clustering clause removed.
 - **This one does not reduce to a passing test.** Whether a cited fact is
   relevant or is padding is a judgement call on the specific answer. The tests
   pin the rule's *text*; `scripts/verify_fact_relevance.py` lays out the
@@ -330,6 +364,59 @@ deleting the marker would leave us unable to notice the behaviour returning.
 The detector ignores ordinary typography the model emits constantly
 (non-breaking hyphen, narrow no-break space, curly apostrophe); a test pins
 that, because flagging those would bury the signal.
+
+### Never assign a ruler or lord — the correctness trap, again
+
+`RULE_NO_DERIVED_CHART_FACTS`, `chat_service.py:109`.
+
+The fourth fabrication class. The model has real astrological knowledge and
+states derived conclusions as though this service had computed them. Three
+sightings in unrelated runs before it was probed deliberately, and one of them
+was **wrong**: "Mars — the lord of your ninth house." Mars is *placed* in the
+9th; the 9th from Virgo is Taurus, ruled by Venus.
+
+Measured before the rule, three runs each: rulership asked directly **3/3**,
+nakshatra lord **2/3**. One run invented an aspect outright — "Jupiter is in
+Aquarius, the sign before Pisces, so its influence touches the 7th house area."
+After the rule: **0/3** and **0/3**.
+
+**The boundary is narrower than it looks, and was found by testing rather than
+reasoning.** Two things that resemble this class are legitimate and must stay
+answerable:
+
+| Case | Before rule | Why it is fine |
+|---|---|---|
+| "the 8th and 12th are not opposite" | 3/3 correct | arithmetic on house numbers FACTS already gives |
+| "Aries is a fire sign" | 3/3 stated | a property of a sign already named; no chart-specific claim |
+
+A rule broad enough to catch rulership would have blocked both. What is
+actually forbidden is the **chained** claim: ascendant → house sign → sign
+ruler, which manufactures a lordship nothing here calculated, and which is the
+input to precisely the predictive analysis this service does not do.
+
+> **The exception's first wording was itself the bug.** It read "state a plain
+> property of a sign or nakshatra" — and a regression run immediately exploited
+> it with "Bharani is ruled by Venus", which *is* a plain property of a
+> nakshatra. The exception had authorised the exact claim the rule forbids.
+> Lordship is now excluded by name, and
+> `test_the_derived_facts_rule_states_its_two_exceptions` fails if the
+> over-broad wording returns. This is worth remembering when widening any
+> exception here: the model will find the widest reading.
+
+Note also that the leak appeared when lordship was **volunteered** mid-answer,
+not when it was asked for — the direct probes were already clean at that point.
+Probing only the question shapes that name the thing you are testing will miss
+this class.
+
+> **Open, and a direct consequence of the element exception.** The final
+> combined run produced "Both planets are in water-sign-related houses" about
+> the Moon in Cancer and Mars in **Gemini** — Gemini is air. The exception that
+> permits naming a sign's element is being used to state an element claim that
+> is simply wrong. Nothing in FACTS carries elements at all, so there is no
+> grounding for the model to check itself against. Not fixed here: narrowing
+> this further was outside the brief, and the honest options are to drop the
+> element exception or to put elements in FACTS. Worth a decision before the
+> next round.
 
 ### Never describe a dasha sub-period that was not computed
 

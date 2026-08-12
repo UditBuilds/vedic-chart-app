@@ -86,6 +86,40 @@ RULE_NO_UNSTATED_DASHA_STRUCTURE: Final[str] = (
     " nothing about what follows it."
 )
 
+#: A fourth fabrication class: astrology the model knows, presented as though
+#: this service had computed it. Three sightings in unrelated runs before it
+#: was probed deliberately -- "Venus, the ruler of your 7th house", and once
+#: "Mars - the lord of your ninth house", which is simply **wrong** (Mars is
+#: *placed* in the 9th; the 9th from Virgo is Taurus, ruled by Venus).
+#:
+#: Measured before this rule: rulership asked directly 3/3, nakshatra lord
+#: 2/3. One run also invented an aspect outright -- "Jupiter is in Aquarius,
+#: the sign before Pisces, so its influence touches the 7th house area."
+#:
+#: The boundary was found by testing, not assumed, and it is narrower than it
+#: first looks. Two things that LOOK like this class are fine and must stay
+#: that way:
+#:   * Comparing house numbers FACTS already gives ("the 8th and the 12th are
+#:     not opposite") -- 3/3 correct, arithmetic on supplied data.
+#:   * A plain property of a sign ("Aries is a fire sign") -- adds no
+#:     chart-specific claim beyond the placement already stated.
+#: What is forbidden is the *chained* claim: ascendant -> house sign -> sign
+#: ruler, which manufactures a lordship this service never calculated and
+#: which is the input to exactly the predictive analysis it does not do.
+RULE_NO_DERIVED_CHART_FACTS: Final[str] = (
+    "Never assign a ruler, lord or dispositor to anything in this chart, and"
+    " never claim an aspect, conjunction or influence between two placements."
+    " Those come from correspondence tables this service does not compute, so"
+    " \"Jupiter rules your 7th house\" presents as calculated something that"
+    " was not - and being correct by the standard rules does not make it a"
+    " fact about this chart. This holds whether you are asked for a ruler or"
+    " just reaching for one while explaining something else. Two narrow things"
+    " you may still do: name a sign's element or quality, and compare house"
+    " numbers that FACTS already gives you. Neither covers lordship - a"
+    " nakshatra's ruling planet is not a plain property, it is the thing this"
+    " rule forbids."
+)
+
 VOICE_GROUNDED: Final[str] = (
     "Calm and specific. Ground any claim about how someone might feel in a fact"
     " first."
@@ -116,9 +150,11 @@ VOICE_FACT_RELEVANCE: Final[str] = (
     " already broken this rule. Choose by significance: the current dasha lord"
     " for questions about this period, the transiting Moon for today or this"
     " week, otherwise the fact that most directly matches what was asked. Leave"
-    " everything else out, even if it is true. Before you answer, count the"
-    " chart facts you are about to cite; if there are more than four, drop the"
-    " least important ones until there are not."
+    " everything else out, even if it is true. Bodies sharing a house or a sign"
+    " are one fact, not one apiece - say it once, naming them together in a"
+    " single phrase, and never give each its own sentence or its own meaning."
+    " Before you answer, count the chart facts you are about to cite; if there"
+    " are more than four, drop the least important ones until there are not."
 )
 VOICE_END_ON_OBSERVATION: Final[str] = (
     "End on an observation, not an affirmation."
@@ -165,6 +201,7 @@ PROMPT_RULES: Final[tuple[str, ...]] = (
     RULE_NO_INVENTION,
     RULE_NO_RELATIONSHIPS,
     RULE_NO_UNSTATED_DASHA_STRUCTURE,
+    RULE_NO_DERIVED_CHART_FACTS,
 ) + VOICE_RULES
 
 #: Structure only. All prose lives in the constants above -- see the note there,
@@ -175,6 +212,8 @@ SYSTEM_PROMPT_TEMPLATE: Final[str] = """\
 {rule_no_relationships}
 
 {rule_no_unstated_dasha_structure}
+
+{rule_no_derived_chart_facts}
 
 Voice:
 {voice_block}
@@ -313,6 +352,7 @@ def build_system_prompt(
         rule_no_invention=RULE_NO_INVENTION,
         rule_no_relationships=RULE_NO_RELATIONSHIPS,
         rule_no_unstated_dasha_structure=RULE_NO_UNSTATED_DASHA_STRUCTURE,
+        rule_no_derived_chart_facts=RULE_NO_DERIVED_CHART_FACTS,
         voice_block=_render_voice_block(),
         natal_summary=facts.format_natal(chart),
         dasha_summary=facts.format_dasha(chart),

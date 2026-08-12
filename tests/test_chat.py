@@ -401,6 +401,22 @@ def test_the_ceiling_is_stated_as_hard_and_countable(chart, transits) -> None:
     assert "count the chart facts you are about to cite" in prompt
 
 
+def test_shared_house_bodies_count_as_one_fact(chart, transits) -> None:
+    """Every overshoot at 6+ facts was one shape: enumerating a crowded house.
+
+    Across 28 runs of the three broad questions, each reply citing six or more
+    facts walked the occupants of a shared house one at a time -- "the Sun,
+    Mercury and Jupiter also occupy that same 11th house" -- giving each body
+    its own clause and its own meaning, so a single observation consumed four
+    of the four available citations. The two five-fact replies did *not* fit
+    that shape and are not what this clause targets.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "bodies sharing a house or a sign are one fact, not one apiece" in prompt
+    assert "naming them together in a single phrase" in prompt
+    assert "never give each its own sentence or its own meaning" in prompt
+
+
 def test_rule_pushes_significance_over_category_completeness(chart, transits) -> None:
     """The observed failure was enumeration, so the rule needs a tie-break.
 
@@ -452,6 +468,45 @@ def test_the_facts_block_really_does_carry_only_one_antardasha(chart) -> None:
         "FACTS now mentions antardasha more than once; "
         "RULE_NO_UNSTATED_DASHA_STRUCTURE assumes exactly one is given"
     )
+
+
+def test_prompt_forbids_derived_rulerships_and_aspects(chart, transits) -> None:
+    """Fourth class: astrology the model knows, stated as if we computed it.
+
+    Three sightings in unrelated runs before it was probed on purpose, one of
+    them plainly wrong -- "Mars, the lord of your ninth house". Mars is
+    *placed* in the 9th; the 9th from Virgo is Taurus, whose ruler is Venus.
+    Measured before the rule: rulership asked directly 3/3, nakshatra lord
+    2/3. After: 0/3 and 0/3.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "never assign a ruler, lord or dispositor" in prompt
+    assert "never claim an aspect, conjunction or influence between two placements" in prompt
+    # The mechanism, named -- being right is not the same as being computed.
+    assert "being correct by the standard rules does not make it a fact" in prompt
+
+
+def test_the_derived_facts_rule_states_its_two_exceptions(chart, transits) -> None:
+    """The boundary, pinned, because a broader rule would break working answers.
+
+    Testing found two things that look like the forbidden class and are not.
+    Comparing house numbers FACTS already gives ("the 8th and 12th are not
+    opposite") was 3/3 correct before the rule and must stay answerable. A
+    sign's element ("Aries is a fire sign") adds no chart-specific claim and
+    was 3/3 unaffected. If either exception is dropped from the rule text, this
+    fails before anyone finds out from a transcript.
+
+    The exception is worded narrowly on purpose, and the first attempt was not.
+    It read "state a plain property of a sign or nakshatra", which a regression
+    run promptly exploited: "Bharani is ruled by Venus" *is* a plain property
+    of a nakshatra, so the exception authorised the exact claim the rule
+    forbids. Lordship is now excluded by name.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "name a sign's element or quality" in prompt
+    assert "compare house numbers that facts already gives you" in prompt
+    assert "neither covers lordship" in prompt
+    assert "a nakshatra's ruling planet is not a plain property" in prompt
 
 
 def test_prompt_states_that_a_dasha_change_moves_no_planet(chart, transits) -> None:

@@ -435,6 +435,15 @@ Two model behaviours are worth knowing about because they are not obvious:
 - **It completes dasha structure we never computed.** FACTS carries one
   antardasha; asked what comes next, the model supplied the answer from the
   standard Vimshottari order — *correctly*, which is what makes it dangerous.
+- **It assigns rulers and lords nothing here calculated.** "Jupiter rules your
+  7th house", "Bharani is ruled by Venus" — correct by the standard tables,
+  computed by nothing in this service, and once simply wrong ("Mars, the lord
+  of your ninth house"; Mars is *placed* there, the 9th from Virgo is ruled by
+  Venus). Blocked — but narrowly: comparing house numbers FACTS already gives,
+  and naming a sign's element, both stay answerable.
+- **It enumerates crowded houses.** Every broad reply that overshot the
+  citation ceiling did it the same way, listing each body in a shared house as
+  a separate fact. They now count as one.
 
 Whether any of this lands is **not** something the test suite can settle —
 "relevant" versus "padding" is a judgement about a specific answer. The tests
