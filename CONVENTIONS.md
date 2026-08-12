@@ -243,15 +243,214 @@ on purpose.
 **When adding a rule: define a constant, add it to `PROMPT_RULES`, interpolate
 it. Do not type it into the template.**
 
-### Open tension: two chart facts per message
+### Fact citation: a scaled ceiling, arrived at the hard way
 
-`VOICE_TWO_FACTS`, `chat_service.py:69`, asks for at most two chart facts per
-reply. **This is not reliably obeyed** — an observed answer to "How is this week
-looking?" cited the Moon, Mars, Sun, Mercury and Jupiter.
+`VOICE_FACT_RELEVANCE`, `chat_service.py:145`. One or two chart facts for a
+narrow question, at most four for a broad one, stated as a hard ceiling and
+counted in planets named — **with bodies sharing a house or sign counting as
+one fact, not one apiece.**
 
-Recorded here as a known, unresolved tension rather than a settled rule. It is a
-voice problem, not a grounding one: the facts cited were correct. If you tighten
-it, do it deliberately and re-run the transcripts.
+**This rule has been wrong twice. Both failures are the argument for its
+current shape, so do not "simplify" it back into either of them.**
+
+1. **A flat cap** — "two chart facts maximum per message". Held for narrow
+   questions, broke on broad ones: answering "How is this week looking?"
+   honestly needed five facts, and the ceiling could only be met by dropping a
+   relevant one. Recorded here for two releases as an unresolved tension.
+2. **A pure relevance principle, no number** — "cite what the question needs".
+   This measured **worse than the flat cap it replaced.** "How is this week
+   looking?" went from five facts to **all nine** transiting bodies, walked in
+   FACTS order, Ketu included. The model read "relevant" as "shares the
+   timeframe I was asked about", and every transit shares today's timeframe, so
+   the whole block qualified.
+
+The lesson is that a number is load-bearing — a principle with no ceiling gave
+the model nothing to stop against — but a number alone is not enough either.
+With a ceiling and no tie-break it filled the quota positionally. What fixed it
+was adding a significance ordering: the dasha lord for period questions, the
+transiting Moon for today/this week (the fastest-moving body, so the one that
+actually distinguishes this week from last), otherwise whatever matches the
+question's own theme. Plus a behavioural trigger, "if you are listing
+placements one after another, you have already broken this rule."
+
+Measured facts per reply across the three broad questions — flat cap, no cap,
+ceiling without tie-break, current rule:
+
+| Question | flat | none | +ceiling | current |
+|---|---|---|---|---|
+| How is this week looking? | 5 | 9 | 4 | 2 |
+| Overall shape of this period? | — | ~4 | 2 | 2 |
+| General read on where I'm at? | — | ~10 | 8 | 5 |
+
+### The overshoot that survived the ceiling: shared-house enumeration
+
+Measured over 28 runs of the three broad questions, **every reply citing six
+or more facts failed the same way** — it walked the occupants of one crowded
+house one at a time, giving each its own clause and its own meaning:
+
+> "…the transiting Moon sits in Cancer in the 11th house… **The Sun, Mercury
+> and Jupiter also occupy that same 11th house**, adding clarity, communication
+> and optimism…"
+
+That is a single observation eating four of the four available citations. The
+clause added to `VOICE_FACT_RELEVANCE` makes bodies sharing a house or sign
+count once, named together in one phrase. Distribution on the worst question
+before and after, ten runs each:
+
+| | distribution | max |
+|---|---|---|
+| before | 4,9,4,4,4,4,8,4,4,4,4,4,4,4,6,8,5,7 (18 runs) | **9** |
+| after | 4,4,5,6,4,5,4,4,5,4 | **6** |
+
+Two honest caveats, because the numbers flatter the change slightly:
+
+- **It partly redefines the metric.** Under the old per-body count some replies
+  scored 5 where they now score 2. The behavioural change is real regardless —
+  the model now writes one grouped phrase instead of a clause per body — but
+  this is not a pure reduction and should not be quoted as one.
+- **It does not address the other overshoot shape.** The residual 5s and the
+  one 6 are not enumeration; they cite the dasha lords' natal placements
+  alongside the dasha and the transiting Moon. Every one of those facts is
+  individually defensible. That shape was never in this clause's scope and is
+  still open.
+
+Two things to know before touching it:
+
+- **Guards exist and were proven by injection.** `test_the_ceiling_is_scaled_not_flat`,
+  `test_the_ceiling_is_stated_as_hard_and_countable`,
+  `test_rule_pushes_significance_over_category_completeness` and
+  `test_shared_house_bodies_count_as_one_fact` all fail if the
+  flat two-fact cap is reinstated or the clustering clause removed.
+- **This one does not reduce to a passing test.** Whether a cited fact is
+  relevant or is padding is a judgement call on the specific answer. The tests
+  pin the rule's *text*; `scripts/verify_fact_relevance.py` lays out the
+  transcripts a human has to read. Its fact-mention tally is a counting aid and
+  says so. Do not report this rule as verified on a green test run.
+
+Kept separate from `verify_chat.py` on purpose: that script's turn budget is
+already paced to the edge of the free tier — see the note under
+[Rate limits](#rate-limits-and-the-pacing-they-force). This one carries its own
+arithmetic (10 turns, 25s apart, ~7,100 tokens/min against the 8,000 ceiling).
+
+### The model emits its own citation markers
+
+`VOICE_NO_CITATION_MARKERS`, `chat_service.py:136`, with the detector
+`formatting_artifacts_in()` at `chat_service.py:234`.
+
+Replies were arriving with a literal fullwidth-bracket citation marker wrapped
+around the token `FACTS` — U+3010/U+3011, read off our own section header.
+Investigated rather than stripped, and the investigation is worth not
+repeating:
+
+- **No Groq feature is involved.** The request carries five keys. No tools, no
+  `tool_choice`, no `search_settings`, no compound/agentic mode. In the full raw
+  response, `annotations`, `executed_tools`, `tool_calls` and `mcp_list_tools`
+  are all `null`.
+- **We are not being echoed.** The rendered system prompt is **pure ASCII** —
+  pinned now by `test_the_rendered_prompt_is_pure_ascii`, which exists so this
+  premise cannot rot silently. Fullwidth brackets appear nowhere in this repo.
+- **The model generates it.** `openai/gpt-oss-120b` is trained to cite in that
+  format and treats our `FACTS:` header as a source name. Its reasoning trace
+  says so in as many words: *"Cite facts."*
+- **It is inversely correlated with `reasoning_effort`**: 5/9 at `low`
+  (production), 2/9 at `medium`, 0/9 at `high`. Effort is not the lever — see
+  [reasoning_effort](#reasoning_effortlow-specifically) for why `low` is pinned.
+
+The rule alone took it to 0/15 on the same questions, and 0/13 across a wider
+set. Deliberately a **detector, not a stripper**: this codebase surfaces a bad
+reply rather than laundering it — an empty completion raises instead of
+returning blank, and banned phrases are reported rather than deleted. Silently
+deleting the marker would leave us unable to notice the behaviour returning.
+The detector ignores ordinary typography the model emits constantly
+(non-breaking hyphen, narrow no-break space, curly apostrophe); a test pins
+that, because flagging those would bury the signal.
+
+### Never assign a ruler or lord — the correctness trap, again
+
+`RULE_NO_DERIVED_CHART_FACTS`, `chat_service.py:109`.
+
+The fourth fabrication class. The model has real astrological knowledge and
+states derived conclusions as though this service had computed them. Three
+sightings in unrelated runs before it was probed deliberately, and one of them
+was **wrong**: "Mars — the lord of your ninth house." Mars is *placed* in the
+9th; the 9th from Virgo is Taurus, ruled by Venus.
+
+Measured before the rule, three runs each: rulership asked directly **3/3**,
+nakshatra lord **2/3**. One run invented an aspect outright — "Jupiter is in
+Aquarius, the sign before Pisces, so its influence touches the 7th house area."
+After the rule: **0/3** and **0/3**.
+
+**The boundary is narrower than it looks, and was found by testing rather than
+reasoning.** Two things that resemble this class are legitimate and must stay
+answerable:
+
+| Case | Before rule | Why it is fine |
+|---|---|---|
+| "the 8th and 12th are not opposite" | 3/3 correct | arithmetic on house numbers FACTS already gives |
+| "Aries is a fire sign" | 3/3 stated | a property of a sign already named; no chart-specific claim |
+
+A rule broad enough to catch rulership would have blocked both. What is
+actually forbidden is the **chained** claim: ascendant → house sign → sign
+ruler, which manufactures a lordship nothing here calculated, and which is the
+input to precisely the predictive analysis this service does not do.
+
+> **The exception's first wording was itself the bug.** It read "state a plain
+> property of a sign or nakshatra" — and a regression run immediately exploited
+> it with "Bharani is ruled by Venus", which *is* a plain property of a
+> nakshatra. The exception had authorised the exact claim the rule forbids.
+> Lordship is now excluded by name, and
+> `test_the_derived_facts_rule_states_its_two_exceptions` fails if the
+> over-broad wording returns. This is worth remembering when widening any
+> exception here: the model will find the widest reading.
+
+Note also that the leak appeared when lordship was **volunteered** mid-answer,
+not when it was asked for — the direct probes were already clean at that point.
+Probing only the question shapes that name the thing you are testing will miss
+this class.
+
+> **Open, and a direct consequence of the element exception.** The final
+> combined run produced "Both planets are in water-sign-related houses" about
+> the Moon in Cancer and Mars in **Gemini** — Gemini is air. The exception that
+> permits naming a sign's element is being used to state an element claim that
+> is simply wrong. Nothing in FACTS carries elements at all, so there is no
+> grounding for the model to check itself against. Not fixed here: narrowing
+> this further was outside the brief, and the honest options are to drop the
+> element exception or to put elements in FACTS. Worth a decision before the
+> next round.
+
+### Never describe a dasha sub-period that was not computed
+
+`RULE_NO_UNSTATED_DASHA_STRUCTURE`, `chat_service.py:77`.
+
+The third fabrication class, after the movement one and the ordinal one. FACTS
+carries every mahadasha's start and end date but **exactly one antardasha, the
+running one**. The model fills the gap from the Vimshottari order it knows
+independently and states the result as chart fact. Two shapes, four runs each:
+
+| Fabrication | Rate |
+|---|---|
+| "The antardasha sequence will restart under Rahu's sub-periods" | 2/4 |
+| "Your next antardasha begins 2026-12-20 and it is Jupiter" | 3/4 |
+
+**The second is the dangerous one, because Jupiter is correct** — it is what
+the standard sequence gives. That is precisely why it reads as grounded. It is
+still not a fact about this chart and nothing here computed it. A fabrication
+that happens to be right is not a smaller problem; it is a harder one to catch.
+
+Worth knowing what is *not* in this class: the model already declines future
+transits and future sub-periods unprompted, and gets arithmetic on the given
+dates right. Five of seven probes were clean before any rule existed. The class
+is narrow but intermittent, which is why the rate was measured over repeats
+rather than judged from one run.
+
+After the rule, 0/16 across the same probes. `test_prompt_forbids_inventing_unstated_dasha_structure`
+guards the rule text; `test_the_facts_block_really_does_carry_only_one_antardasha`
+guards its *premise* — if the formatter ever starts emitting a full antardasha
+sequence, the rule becomes actively wrong rather than merely unnecessary, and
+that test fails first. Both proven by injection.
+
+The timescale-matching rule, `VOICE_MATCH_TIMESCALE`, is unchanged and still
+governs *which* facts a question reaches for. This rule governs how many.
 
 ---
 

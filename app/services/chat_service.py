@@ -62,12 +62,99 @@ RULE_NO_RELATIONSHIPS: Final[str] = (
     " life."
 )
 
+#: A third fabrication class, distinct from the movement and ordinal ones.
+#: FACTS carries every mahadasha's start and end date but exactly one
+#: antardasha -- the running one. The model fills the gap from the Vimshottari
+#: order it knows independently, and states the result as though it came from
+#: the chart. Two shapes, both measured:
+#:
+#:   "The antardasha sequence will restart under Rahu's sub-periods"   2/4
+#:   "Your next antardasha begins 2026-12-20 and it is Jupiter"        3/4
+#:
+#: The second is the more dangerous of the two, because Jupiter is *correct*
+#: by the standard sequence -- which is exactly why it reads as grounded. It
+#: is still not a fact about this chart, and nothing here computed it.
+RULE_NO_UNSTATED_DASHA_STRUCTURE: Final[str] = (
+    "FACTS gives exactly one antardasha: the one running now. Never name, date,"
+    " sequence or describe any other sub-period - not the one that follows the"
+    " running antardasha, and not the contents of any later mahadasha. You know"
+    " the Vimshottari order from your own training; that is not a fact about"
+    " this chart, and stating it as one is inventing. For every mahadasha other"
+    " than the current one you have its start and end dates and nothing else -"
+    " give those and stop. Asked which sub-period comes next or when it starts,"
+    " say it is not calculated: knowing when the current one ends tells you"
+    " nothing about what follows it."
+)
+
+#: A fourth fabrication class: astrology the model knows, presented as though
+#: this service had computed it. Three sightings in unrelated runs before it
+#: was probed deliberately -- "Venus, the ruler of your 7th house", and once
+#: "Mars - the lord of your ninth house", which is simply **wrong** (Mars is
+#: *placed* in the 9th; the 9th from Virgo is Taurus, ruled by Venus).
+#:
+#: Measured before this rule: rulership asked directly 3/3, nakshatra lord
+#: 2/3. One run also invented an aspect outright -- "Jupiter is in Aquarius,
+#: the sign before Pisces, so its influence touches the 7th house area."
+#:
+#: The boundary was found by testing, not assumed, and it is narrower than it
+#: first looks. Two things that LOOK like this class are fine and must stay
+#: that way:
+#:   * Comparing house numbers FACTS already gives ("the 8th and the 12th are
+#:     not opposite") -- 3/3 correct, arithmetic on supplied data.
+#:   * A plain property of a sign ("Aries is a fire sign") -- adds no
+#:     chart-specific claim beyond the placement already stated.
+#: What is forbidden is the *chained* claim: ascendant -> house sign -> sign
+#: ruler, which manufactures a lordship this service never calculated and
+#: which is the input to exactly the predictive analysis it does not do.
+RULE_NO_DERIVED_CHART_FACTS: Final[str] = (
+    "Never assign a ruler, lord or dispositor to anything in this chart, and"
+    " never claim an aspect, conjunction or influence between two placements."
+    " Those come from correspondence tables this service does not compute, so"
+    " \"Jupiter rules your 7th house\" presents as calculated something that"
+    " was not - and being correct by the standard rules does not make it a"
+    " fact about this chart. This holds whether you are asked for a ruler or"
+    " just reaching for one while explaining something else. Two narrow things"
+    " you may still do: name a sign's element or quality, and compare house"
+    " numbers that FACTS already gives you. Neither covers lordship - a"
+    " nakshatra's ruling planet is not a plain property, it is the thing this"
+    " rule forbids."
+)
+
 VOICE_GROUNDED: Final[str] = (
     "Calm and specific. Ground any claim about how someone might feel in a fact"
     " first."
 )
-VOICE_TWO_FACTS: Final[str] = (
-    "Two chart facts maximum per message. Don't data-dump the chart."
+#: A scaled ceiling, and the third attempt at this rule. Its history is the
+#: argument for the current shape, so it is worth keeping:
+#:
+#: 1. "Two chart facts maximum per message." Held for narrow questions, broke
+#:    on broad ones -- "How is this week looking?" needed five facts, and the
+#:    cap could only be met by dropping a relevant one.
+#: 2. Pure relevance, no number: "cite what the question needs". Measured
+#:    worse than the thing it replaced. "How is this week looking?" went to
+#:    **all nine** transiting bodies, in FACTS order, Ketu included. The model
+#:    read "relevant" as "in the timeframe asked about", and since every
+#:    transit shares today's timeframe, the whole block qualified.
+#:
+#: So a number is load-bearing after all -- a principle with no ceiling gave
+#: the model nothing to stop against. What it needs on top is a tie-break, or
+#: it fills the quota positionally: the dasha lord for period questions, the
+#: transiting Moon for day/week ones (fastest-moving body, so the one that
+#: actually distinguishes this week from last), and otherwise whatever matches
+#: the question's own theme. Category membership is explicitly not relevance.
+VOICE_FACT_RELEVANCE: Final[str] = (
+    "Cite one or two chart facts for a narrow question and at most four for a"
+    " broad one. This is a hard ceiling, not an average, and it counts every"
+    " planet you name. Sharing a timeframe with the question does not make a"
+    " fact relevant - if you are listing placements one after another, you have"
+    " already broken this rule. Choose by significance: the current dasha lord"
+    " for questions about this period, the transiting Moon for today or this"
+    " week, otherwise the fact that most directly matches what was asked. Leave"
+    " everything else out, even if it is true. Bodies sharing a house or a sign"
+    " are one fact, not one apiece - say it once, naming them together in a"
+    " single phrase, and never give each its own sentence or its own meaning."
+    " Before you answer, count the chart facts you are about to cite; if there"
+    " are more than four, drop the least important ones until there are not."
 )
 VOICE_END_ON_OBSERVATION: Final[str] = (
     "End on an observation, not an affirmation."
@@ -75,6 +162,19 @@ VOICE_END_ON_OBSERVATION: Final[str] = (
 VOICE_PLAIN_AND_CONTINUOUS: Final[str] = (
     "Short, plain sentences. Reference earlier conversation naturally instead of"
     " re-explaining the chart from scratch each turn."
+)
+#: The model emits its own citation syntax unprompted. Nothing in this prompt
+#: contains a bracket of any kind -- the rendered prompt is pure ASCII -- but
+#: at reasoning_effort="low" it wraps the literal token "FACTS", read off our
+#: own section header, in the fullwidth brackets U+3010/U+3011 it was trained
+#: to cite with. Its own reasoning trace gives the intent away: "Cite facts."
+#: Measured rate before this rule: 5/9 at "low", 2/9 at "medium", 0/9 at
+#: "high". Effort is not the lever to pull -- see llm.py on why "low" is
+#: pinned -- so the instruction is given explicitly instead.
+VOICE_NO_CITATION_MARKERS: Final[str] = (
+    "Write plain prose. Never add citation markers, source tags, footnotes or"
+    " bracketed references of any kind, and never name the FACTS block in your"
+    " reply - it is where your information comes from, not something to cite."
 )
 VOICE_MATCH_TIMESCALE: Final[str] = (
     'Match the fact to the question\'s timescale: life-pattern questions ->'
@@ -86,10 +186,11 @@ VOICE_MATCH_TIMESCALE: Final[str] = (
 #: separately because it expands into many lines.
 VOICE_RULES: Final[tuple[str, ...]] = (
     VOICE_GROUNDED,
-    VOICE_TWO_FACTS,
+    VOICE_FACT_RELEVANCE,
     VOICE_END_ON_OBSERVATION,
     VOICE_PLAIN_AND_CONTINUOUS,
     VOICE_MATCH_TIMESCALE,
+    VOICE_NO_CITATION_MARKERS,
 )
 
 #: Every rule that must survive into the rendered prompt intact. The line-wrap
@@ -99,6 +200,8 @@ PROMPT_RULES: Final[tuple[str, ...]] = (
     ROLE,
     RULE_NO_INVENTION,
     RULE_NO_RELATIONSHIPS,
+    RULE_NO_UNSTATED_DASHA_STRUCTURE,
+    RULE_NO_DERIVED_CHART_FACTS,
 ) + VOICE_RULES
 
 #: Structure only. All prose lives in the constants above -- see the note there,
@@ -107,6 +210,10 @@ SYSTEM_PROMPT_TEMPLATE: Final[str] = """\
 {role} {rule_no_invention}
 
 {rule_no_relationships}
+
+{rule_no_unstated_dasha_structure}
+
+{rule_no_derived_chart_facts}
 
 Voice:
 {voice_block}
@@ -138,10 +245,47 @@ BANNED_PHRASES: Final[tuple[str, ...]] = (
 )
 
 
+#: Citation punctuation the model emits unprompted, as raw codepoints.
+#:
+#: ``openai/gpt-oss-120b`` is trained to cite with fullwidth brackets --
+#: U+3010 and U+3011, with U+2020 as the locator separator in the fuller
+#: ``[source-dagger-line]`` form. Nothing in this prompt contains a bracket of
+#: any kind, so these can only come from the model. Defined here once and
+#: reported by :func:`formatting_artifacts_in`, so the characters the tests
+#: and the verifier look for cannot drift apart -- the same reasoning as
+#: :data:`BANNED_PHRASES`.
+#:
+#: Deliberately does *not* include U+2011 (non-breaking hyphen), U+202F
+#: (narrow no-break space) or U+2019 (curly apostrophe). The model emits all
+#: three routinely in dates and contractions; they are typography, not
+#: artifacts, and flagging them would bury the signal.
+FORMATTING_ARTIFACTS: Final[tuple[str, ...]] = (
+    "【",  # LEFT BLACK LENTICULAR BRACKET
+    "】",  # RIGHT BLACK LENTICULAR BRACKET
+    "†",  # DAGGER, the locator separator in the fuller citation form
+)
+
+
 def banned_phrases_in(text: str) -> list[str]:
     """Which forbidden phrases appear in ``text``, case-insensitively."""
     lowered = text.lower()
     return [phrase for phrase in BANNED_PHRASES if phrase in lowered]
+
+
+def formatting_artifacts_in(text: str) -> list[str]:
+    """Which citation-marker codepoints appear in ``text``.
+
+    A detector, not a filter -- deliberately. This codebase's convention is to
+    surface a bad reply rather than quietly launder it: an empty completion is
+    raised as an error instead of returned blank, and banned phrases are
+    reported by the verifier rather than stripped. Silently deleting the
+    marker would leave us unable to notice if the underlying behaviour came
+    back, or if it started producing an artifact we have not seen.
+
+    :returns: the offending codepoints, as ``U+XXXX`` strings, in the order
+        listed in :data:`FORMATTING_ARTIFACTS`.
+    """
+    return [f"U+{ord(char):04X}" for char in FORMATTING_ARTIFACTS if char in text]
 
 
 def _render_banned_list() -> str:
@@ -207,6 +351,8 @@ def build_system_prompt(
         role=ROLE,
         rule_no_invention=RULE_NO_INVENTION,
         rule_no_relationships=RULE_NO_RELATIONSHIPS,
+        rule_no_unstated_dasha_structure=RULE_NO_UNSTATED_DASHA_STRUCTURE,
+        rule_no_derived_chart_facts=RULE_NO_DERIVED_CHART_FACTS,
         voice_block=_render_voice_block(),
         natal_summary=facts.format_natal(chart),
         dasha_summary=facts.format_dasha(chart),

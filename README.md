@@ -336,7 +336,7 @@ contains no `os.environ`, `getenv`, `api_key` or `requests.` usage.
 python -m pytest -q
 ```
 
-164 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
+195 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
 read first — the dasha boundary maths is where an off-by-one is most likely and
 least visible. `tests/test_conventions.py` pins the two deliberate departures
 above; `tests/test_transits.py` holds the AstroSage transit fixtures.
@@ -415,9 +415,47 @@ verifier greps for cannot drift. Writing them inline let the template's line
 wrapping split `"this is your sign to"` across two lines, which silently
 weakened both.
 
+How many facts a reply cites is a **scaled ceiling**: one or two for a narrow
+question, at most four for a broad one. Both simpler versions were tried and
+both measured worse. A flat "two chart facts maximum" broke on broad questions —
+"How is this week looking?" needed five facts and the cap could only be met by
+dropping a relevant one. Removing the number entirely was worse still: the same
+question went to **all nine** transiting bodies, because the model read
+"relevant" as "shares the timeframe", and every transit does. The current rule
+carries a number *and* a significance ordering (dasha lord for period questions,
+transiting Moon for today/this week). `CONVENTIONS.md` has the measurements.
+
+Two model behaviours are worth knowing about because they are not obvious:
+
+- **It emits its own citation markers.** Replies arrived carrying a fullwidth
+  bracket citation wrapped around the token `FACTS`, read off our own section
+  header — no Groq citation feature involved, and the prompt we send is pure
+  ASCII. It is inversely correlated with `reasoning_effort` (5/9 at `low`, 0/9
+  at `high`). Handled by an explicit rule plus a detector, not by stripping.
+- **It completes dasha structure we never computed.** FACTS carries one
+  antardasha; asked what comes next, the model supplied the answer from the
+  standard Vimshottari order — *correctly*, which is what makes it dangerous.
+- **It assigns rulers and lords nothing here calculated.** "Jupiter rules your
+  7th house", "Bharani is ruled by Venus" — correct by the standard tables,
+  computed by nothing in this service, and once simply wrong ("Mars, the lord
+  of your ninth house"; Mars is *placed* there, the 9th from Virgo is ruled by
+  Venus). Blocked — but narrowly: comparing house numbers FACTS already gives,
+  and naming a sign's element, both stay answerable.
+- **It enumerates crowded houses.** Every broad reply that overshot the
+  citation ceiling did it the same way, listing each body in a shared house as
+  a separate fact. They now count as one.
+
+Whether any of this lands is **not** something the test suite can settle —
+"relevant" versus "padding" is a judgement about a specific answer. The tests
+pin the rule text and the guards; the transcripts are what decide it.
+
 ```bash
-python scripts/verify_chat.py    # adversarial, voice, memory; prints transcripts
+python scripts/verify_chat.py             # adversarial, voice, memory
+python scripts/verify_fact_relevance.py   # narrow / broad / broad-sounding citation
 ```
+
+Both print transcripts in full and need `GROQ_API_KEY`. Read them; neither
+returns a verdict on grounding or relevance.
 
 ## Design notes
 

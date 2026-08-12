@@ -304,9 +304,209 @@ def test_full_mahadasha_sequence_reaches_the_facts(chart) -> None:
     assert "Full mahadasha sequence" in rendered
 
 
+# -------------------------------------------------------- citation markers
+#
+# Observed live, three times in one verification run: replies carried a
+# literal fullwidth-bracket citation marker around the token "FACTS", read off
+# our own section header. Nothing in the prompt contains a bracket -- the
+# rendered prompt is pure ASCII -- so the model generates it. Measured rate
+# before the rule, same questions and effort: 5/9 at "low", 2/9 at "medium",
+# 0/9 at "high"; 0/15 after.
+
+
+def test_the_rendered_prompt_is_pure_ascii(chart, transits) -> None:
+    """The premise of the diagnosis, pinned.
+
+    The citation marker cannot be something the model echoed back if we never
+    sent a non-ASCII character. If this ever fails, that reasoning is void and
+    the leak has to be re-investigated rather than assumed understood.
+    """
+    prompt = chat_service.build_system_prompt(chart, transits, [])
+    offenders = sorted({c for c in prompt if ord(c) > 127})
+    assert not offenders, (
+        f"prompt is no longer pure ASCII: {[hex(ord(c)) for c in offenders]}"
+    )
+
+
+def test_prompt_forbids_citation_markers(chart, transits) -> None:
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "never add citation markers" in prompt
+    assert "never name the facts block in your reply" in prompt
+
+
+@pytest.mark.parametrize("artifact", chat_service.FORMATTING_ARTIFACTS)
+def test_artifact_detector_catches_each_codepoint(artifact) -> None:
+    found = chat_service.formatting_artifacts_in(f"Rahu begins 2032{artifact} then.")
+    assert found == [f"U+{ord(artifact):04X}"]
+
+
+def test_artifact_detector_catches_the_exact_observed_leak() -> None:
+    """Verbatim from the transcript that started this."""
+    leaked = (
+        "You are in the Mars Mahadasha (2025-07-05 to 2032-07-05) with Rahu "
+        "antardasha active (2025-12-01 to 2026-12-20)【FACTS】."
+    )
+    assert chat_service.formatting_artifacts_in(leaked) == ["U+3010", "U+3011"]
+
+
+def test_ordinary_typography_is_not_flagged() -> None:
+    """The model emits these constantly; flagging them would bury the signal.
+
+    A non-breaking hyphen in a date, a narrow no-break space and a curly
+    apostrophe are not artifacts -- the narrow no-break space is the character
+    that crashed a verification run, and it is still legitimate output.
+    """
+    typographic = (
+        "Rahu’s period runs 2032‑07‑05 to 2050‑07‑06."
+    )
+    assert chat_service.formatting_artifacts_in(typographic) == []
+
+
+# ------------------------------------------------------ fact-citation rule
+#
+# The flat "two chart facts maximum" was replaced by a relevance principle.
+# These pin the replacement's two halves so neither can be lost: the cap is
+# gone, and the scaling language that took its place is present. Neither test
+# can settle whether the *model* now cites well -- that is a judgement call on
+# real transcripts, which is what scripts/verify_fact_relevance.py exists for.
+
+
+def test_the_ceiling_is_scaled_not_flat(chart, transits) -> None:
+    """Two numbers, not one. Both previous shapes of this rule failed.
+
+    A single flat cap ("two chart facts maximum") forces an incomplete answer
+    to a broad question. No cap at all measured worse still -- "How is this
+    week looking?" went to all nine transiting bodies, because every transit
+    shares the timeframe the question asked about, so the model read the whole
+    block as relevant. The rule has to carry a narrow number and a broad one.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "one or two chart facts for a narrow question" in prompt
+    assert "at most four for a broad one" in prompt
+    # ...and the old flat cap must not creep back in any of its phrasings.
+    for flat in ("two chart facts maximum", "facts maximum per message",
+                 "at most two facts", "maximum of two"):
+        assert flat not in prompt, f"the flat ceiling is back: {flat!r}"
+
+
+def test_the_ceiling_is_stated_as_hard_and_countable(chart, transits) -> None:
+    """"Roughly N" gave the model room to round upward; "hard" plus a unit it
+    can actually count against did not."""
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "hard ceiling, not an average" in prompt
+    assert "counts every planet you name" in prompt
+    # The explicit self-check. Without it the worst broad question ("give me a
+    # general read on where I'm at right now") sat at 5-8 planets every run;
+    # with it, 11 of 12 broad replies came in at four or fewer.
+    assert "count the chart facts you are about to cite" in prompt
+
+
+def test_shared_house_bodies_count_as_one_fact(chart, transits) -> None:
+    """Every overshoot at 6+ facts was one shape: enumerating a crowded house.
+
+    Across 28 runs of the three broad questions, each reply citing six or more
+    facts walked the occupants of a shared house one at a time -- "the Sun,
+    Mercury and Jupiter also occupy that same 11th house" -- giving each body
+    its own clause and its own meaning, so a single observation consumed four
+    of the four available citations. The two five-fact replies did *not* fit
+    that shape and are not what this clause targets.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "bodies sharing a house or a sign are one fact, not one apiece" in prompt
+    assert "naming them together in a single phrase" in prompt
+    assert "never give each its own sentence or its own meaning" in prompt
+
+
+def test_rule_pushes_significance_over_category_completeness(chart, transits) -> None:
+    """The observed failure was enumeration, so the rule needs a tie-break.
+
+    Without one the model fills the quota positionally -- it walked the transit
+    block in FACTS order. Naming which fact wins for which question shape is
+    what stopped it.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "sharing a timeframe with the question does not make a fact relevant" in prompt
+    assert "listing placements one after another" in prompt
+    assert "the current dasha lord for questions about this period" in prompt
+    assert "the transiting moon for today or this week" in prompt
+
+
 def test_prompt_forbids_inventing_relationships(chart, transits) -> None:
     prompt = chat_service.build_system_prompt(chart, transits, []).lower()
     assert "never state a relationship, comparison, sequence, or change" in prompt
+
+
+def test_prompt_forbids_inventing_unstated_dasha_structure(chart, transits) -> None:
+    """Third fabrication class: sub-period structure that was never computed.
+
+    FACTS carries every mahadasha's start and end date but exactly one
+    antardasha, the running one. Two observed shapes, measured over four runs
+    each before the rule: "the antardasha sequence will restart under Rahu's
+    sub-periods" (2/4), and "your next antardasha begins 2026-12-20 and it is
+    Jupiter" (3/4). The second is the dangerous one -- Jupiter is *correct* by
+    the standard Vimshottari order, which is exactly why it reads as grounded.
+    Nothing in this service computed it.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "facts gives exactly one antardasha" in prompt
+    assert "never name, date, sequence or describe any other sub-period" in prompt
+    # The mechanism, named explicitly -- the model knows the order independently.
+    assert "you know the vimshottari order from your own training" in prompt
+    # And the specific question shape that survived the first wording.
+    assert "asked which sub-period comes next" in prompt
+
+
+def test_the_facts_block_really_does_carry_only_one_antardasha(chart) -> None:
+    """The rule's premise, pinned against the formatter.
+
+    If FACTS ever starts carrying a full antardasha sequence, the rule above
+    becomes wrong rather than merely unnecessary -- it would be instructing the
+    model to withhold something it was given. This fails first in that case.
+    """
+    rendered = facts.format_dasha(chart).lower()
+    assert rendered.count("antardasha") == 1, (
+        "FACTS now mentions antardasha more than once; "
+        "RULE_NO_UNSTATED_DASHA_STRUCTURE assumes exactly one is given"
+    )
+
+
+def test_prompt_forbids_derived_rulerships_and_aspects(chart, transits) -> None:
+    """Fourth class: astrology the model knows, stated as if we computed it.
+
+    Three sightings in unrelated runs before it was probed on purpose, one of
+    them plainly wrong -- "Mars, the lord of your ninth house". Mars is
+    *placed* in the 9th; the 9th from Virgo is Taurus, whose ruler is Venus.
+    Measured before the rule: rulership asked directly 3/3, nakshatra lord
+    2/3. After: 0/3 and 0/3.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "never assign a ruler, lord or dispositor" in prompt
+    assert "never claim an aspect, conjunction or influence between two placements" in prompt
+    # The mechanism, named -- being right is not the same as being computed.
+    assert "being correct by the standard rules does not make it a fact" in prompt
+
+
+def test_the_derived_facts_rule_states_its_two_exceptions(chart, transits) -> None:
+    """The boundary, pinned, because a broader rule would break working answers.
+
+    Testing found two things that look like the forbidden class and are not.
+    Comparing house numbers FACTS already gives ("the 8th and 12th are not
+    opposite") was 3/3 correct before the rule and must stay answerable. A
+    sign's element ("Aries is a fire sign") adds no chart-specific claim and
+    was 3/3 unaffected. If either exception is dropped from the rule text, this
+    fails before anyone finds out from a transcript.
+
+    The exception is worded narrowly on purpose, and the first attempt was not.
+    It read "state a plain property of a sign or nakshatra", which a regression
+    run promptly exploited: "Bharani is ruled by Venus" *is* a plain property
+    of a nakshatra, so the exception authorised the exact claim the rule
+    forbids. Lordship is now excluded by name.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "name a sign's element or quality" in prompt
+    assert "compare house numbers that facts already gives you" in prompt
+    assert "neither covers lordship" in prompt
+    assert "a nakshatra's ruling planet is not a plain property" in prompt
 
 
 def test_prompt_states_that_a_dasha_change_moves_no_planet(chart, transits) -> None:
