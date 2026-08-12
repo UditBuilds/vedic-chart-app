@@ -166,7 +166,7 @@ def test_natal_summary_names_every_graha(chart) -> None:
     rendered = facts.format_natal(chart)
     for planet in chart["planets"]:
         assert planet["name"] in rendered
-    assert "Virgo rising" in rendered
+    assert "Virgo (earth, dual) rising" in rendered
 
 
 def test_dasha_summary_carries_both_running_periods(chart) -> None:
@@ -222,7 +222,7 @@ def test_system_prompt_contains_facts_and_rules(chart, transits) -> None:
         assert phrase in prompt.lower(), f"{phrase!r} did not survive into the prompt"
     assert "Mahadasha: Mars" in prompt
     assert "Ardra" in prompt
-    assert "Virgo rising" in prompt
+    assert "Virgo (earth, dual) rising" in prompt
 
 
 def test_system_prompt_has_no_unfilled_placeholders(chart, transits) -> None:
@@ -279,6 +279,33 @@ def test_ordinal_suffixes_read_naturally(name, expected) -> None:
 def test_unknown_nakshatra_is_rejected() -> None:
     with pytest.raises(KeyError, match="unknown nakshatra"):
         facts.nakshatra_ordinal("Definitely Not A Nakshatra")
+
+
+def test_every_sign_in_facts_carries_element_and_modality(chart, transits) -> None:
+    """Grounded wherever a sign is stated, natal and transiting alike.
+
+    The observed failure -- "Mars in Gemini ... water-sign-related" -- was a
+    *transit* line, so annotating only the natal block would have left the
+    actual bug in place.
+    """
+    from app.services.astrology import SIGN_NAMES, describe_sign
+
+    rendered = facts.format_natal(chart) + "\n" + facts.format_transits(transits)
+    for line in rendered.splitlines():
+        for sign in SIGN_NAMES:
+            if re.search(rf"\b{sign}\b", line):
+                assert describe_sign(sign) in line, (
+                    f"sign {sign!r} appears unannotated in: {line!r}"
+                )
+
+
+def test_the_transit_line_for_gemini_is_annotated_air(transits) -> None:
+    """The exact line the model read wrongly, now carrying its own answer."""
+    rendered = facts.format_transits(transits)
+    gemini_lines = [l for l in rendered.splitlines() if "Gemini" in l]
+    assert gemini_lines, "fixture no longer has anything in Gemini; pick another sign"
+    for line in gemini_lines:
+        assert "Gemini (air, dual)" in line
 
 
 def test_natal_moon_nakshatra_carries_its_ordinal(chart) -> None:

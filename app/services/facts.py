@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.astrology import NAKSHATRA_NAMES
+from app.services.astrology import NAKSHATRA_NAMES, describe_sign
 
 #: Rough cap on how much conversation history we replay. Groq's free tier
 #: allows 12,000 tokens per minute on llama-3.3-70b-versatile, and the facts
@@ -64,9 +64,9 @@ def format_natal(chart: dict[str, Any]) -> str:
     """Ascendant plus all nine placements, one graha per line."""
     ascendant = chart["ascendant"]
     lines = [
-        f"Ascendant (lagna): {ascendant['sign']} rising, "
+        f"Ascendant (lagna): {describe_sign(ascendant['sign'])} rising, "
         f"nakshatra {ascendant['nakshatra']} pada {ascendant['pada']}.",
-        f"Moon sign (rashi): {chart['moon_rashi']}.",
+        f"Moon sign (rashi): {describe_sign(chart['moon_rashi'])}.",
     ]
     for planet in chart["planets"]:
         retrograde = ", retrograde" if planet["retrograde"] else ""
@@ -79,7 +79,7 @@ def format_natal(chart: dict[str, Any]) -> str:
             else planet["nakshatra"]
         )
         lines.append(
-            f"{planet['name']}: {planet['sign']}, house {planet['house']}, "
+            f"{planet['name']}: {describe_sign(planet['sign'])}, house {planet['house']}, "
             f"nakshatra {nakshatra} pada {planet['pada']}{retrograde}."
         )
     return "\n".join(lines)
@@ -143,14 +143,14 @@ def format_transits(transits: dict[str, Any]) -> str:
     lines = [
         f"Date: {transits['as_of']}.",
         f"Transiting Moon (today's Moon, NOT the natal Moon): "
-        f"{transiting_moon['sign']}, "
+        f"{describe_sign(transiting_moon['sign'])}, "
         f"house {transiting_moon['house_from_ascendant']} from the natal ascendant, "
         f"nakshatra {describe_nakshatra(transits['moon_nakshatra'])} "
         f"pada {transits['moon_pada']}.",
     ]
     for planet in transits["planets"]:
         lines.append(
-            f"{planet['name']} transiting {planet['sign']}, "
+            f"{planet['name']} transiting {describe_sign(planet['sign'])}, "
             f"house {planet['house_from_ascendant']} from the natal ascendant."
         )
     return "\n".join(lines)

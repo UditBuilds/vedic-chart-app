@@ -310,9 +310,14 @@ Two honest caveats, because the numbers flatter the change slightly:
   this is not a pure reduction and should not be quoted as one.
 - **It does not address the other overshoot shape.** The residual 5s and the
   one 6 are not enumeration; they cite the dasha lords' natal placements
-  alongside the dasha and the transiting Moon. Every one of those facts is
-  individually defensible. That shape was never in this clause's scope and is
-  still open.
+  alongside the dasha and the transiting Moon — "Mars, the Mahadasha lord, is
+  natal in Taurus in the 9th house. Rahu, the antardasha lord, is natal in Leo
+  in the 12th house." Two distinct facts, not a groupable cluster, so an honest
+  fix means citing *less*, not relabelling the count. **Still open**, and
+  deliberately so: it was scoped for a follow-up that ran out of daily token
+  budget before it started. Note when picking it up that "cite only one lord"
+  must not break "What changes when my current dasha ends?", which legitimately
+  needs both.
 
 Two things to know before touching it:
 
@@ -408,15 +413,59 @@ not when it was asked for — the direct probes were already clean at that point
 Probing only the question shapes that name the thing you are testing will miss
 this class.
 
-> **Open, and a direct consequence of the element exception.** The final
-> combined run produced "Both planets are in water-sign-related houses" about
-> the Moon in Cancer and Mars in **Gemini** — Gemini is air. The exception that
-> permits naming a sign's element is being used to state an element claim that
-> is simply wrong. Nothing in FACTS carries elements at all, so there is no
-> grounding for the model to check itself against. Not fixed here: narrowing
-> this further was outside the brief, and the honest options are to drop the
-> element exception or to put elements in FACTS. Worth a decision before the
-> next round.
+The element exception once had no grounding behind it, and the model duly got
+one wrong — "Both planets are in water-sign-related houses" about the Moon in
+Cancer and Mars in **Gemini**, which is air. That is now fixed by grounding the
+property rather than by adding another rule: see
+[Static sign properties](#static-sign-properties-are-grounded-element-and-modality-only).
+
+### Static sign properties are grounded — element and modality only
+
+`SIGN_ELEMENTS`, `SIGN_MODALITIES` and `describe_sign()` in
+`app/services/astrology.py`; rendered by `facts.py` wherever a sign appears,
+natal and transiting alike, as `Gemini (air, dual)`.
+
+**Why grounded rather than ruled against.** The model asserted an element from
+memory and got it wrong (Gemini called water). A rule saying "be careful" has
+nothing behind it; a fact in FACTS does. The general principle: when a property
+is static, deterministic and cheap, putting it in front of the model converts a
+fabrication risk into a grounded answer — the same move already made for the
+nakshatra ordinal after "Ardra is the 8th".
+
+**Both tables are inverted out of `jhora.const`, not retyped.** The library
+already ships `fire_signs`/`earth_signs`/`air_signs`/`water_signs` and
+`movable_signs`/`fixed_signs`/`dual_signs`. A hand-copied table would be a
+second source of truth that can silently drift from the engine — the same class
+of risk as the assumed ayanamsa and the assumed node mode. `_signs_by_group()`
+raises if a sign gets two values or none, so a bad table fails at import rather
+than producing a plausible chart.
+
+Cross-checked structurally rather than by restating it: element is a perfect
+4-cycle from Aries and modality a perfect 3-cycle, which is what triplicity and
+quadruplicity mean. `test_element_is_a_four_cycle_and_modality_a_three_cycle`
+pins that, and it is the closest thing to an independent source available
+offline.
+
+**The sign's ruling planet is deliberately NOT grounded.** It is equally
+static, and PyJHora has it (`const.house_lords_dict`). It is left out because
+it is the one static property that completes the chained claim
+`RULE_NO_DERIVED_CHART_FACTS` blocks:
+
+> 7th house is Pisces → Pisces is ruled by Jupiter → "Jupiter rules your 7th
+> house"
+
+Grounding the benign half would hand the model the missing link to the half
+that took real effort to block. `test_the_sign_ruler_is_deliberately_not_grounded`
+pins the decision so it is not "completed" without reading this.
+**This is an accepted residual risk, not an oversight:** the model can still
+volunteer a sign ruler from memory, and nothing in FACTS contradicts it.
+Grounding it *and* verifying the chained claim stays blocked is the open
+follow-up — it needs a live token budget that was not available when this
+landed.
+
+**Cost:** +78 tokens per turn, measured. A turn goes ~1,650 → ~1,728, so the
+8,000/min ceiling allows 4.63 turns a minute instead of 4.85. The verification
+scripts pace at 2.4/min, so nothing there changes.
 
 ### Never describe a dasha sub-period that was not computed
 

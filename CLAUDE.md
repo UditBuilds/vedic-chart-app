@@ -43,7 +43,7 @@ licence section of the README before deploying).
 python -m pytest -q
 ```
 
-195 tests, none of which need a Groq key. On Windows use `.venv/Scripts/python.exe -m pytest -q`.
+219 tests, none of which need a Groq key. On Windows use `.venv/Scripts/python.exe -m pytest -q`.
 
 ```bash
 python run.py            # HTTP API on 127.0.0.1:5000

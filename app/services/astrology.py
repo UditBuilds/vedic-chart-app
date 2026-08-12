@@ -159,6 +159,77 @@ SIGN_NAMES: Final[tuple[str, ...]] = (
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
 
+def _signs_by_group(groups: dict[str, list[int]], label: str) -> tuple[str, ...]:
+    """Invert PyJHora's ``{group: [sign indices]}`` tables into per-sign labels.
+
+    Derived from the library rather than typed out here on purpose. This
+    project has twice been bitten by an assumed default (the ayanamsa, the node
+    mode), and a hand-copied table is the same class of risk: it would be a
+    second source of truth that silently disagrees with the engine.
+    """
+    resolved: list[str | None] = [None] * len(SIGN_NAMES)
+    for name, indices in groups.items():
+        for index in indices:
+            if resolved[index] is not None:
+                raise ValueError(
+                    f"sign {SIGN_NAMES[index]} has two {label} values: "
+                    f"{resolved[index]} and {name}"
+                )
+            resolved[index] = name
+    missing = [SIGN_NAMES[i] for i, v in enumerate(resolved) if v is None]
+    if missing:
+        raise ValueError(f"no {label} for {', '.join(missing)}")
+    return tuple(resolved)  # type: ignore[arg-type]
+
+
+#: Element (tattva) per sign, index-aligned with :data:`SIGN_NAMES`.
+#:
+#: Read out of ``jhora.const``'s own ``fire_signs`` / ``earth_signs`` /
+#: ``air_signs`` / ``water_signs``. Grounded in FACTS because the model was
+#: observed getting it wrong unprompted -- it called Gemini "water-sign-
+#: related" (it is air) -- and nothing in FACTS could contradict it.
+SIGN_ELEMENTS: Final[tuple[str, ...]] = _signs_by_group(
+    {
+        "fire": _jhora_const.fire_signs,
+        "earth": _jhora_const.earth_signs,
+        "air": _jhora_const.air_signs,
+        "water": _jhora_const.water_signs,
+    },
+    "element",
+)
+
+#: Modality per sign, index-aligned with :data:`SIGN_NAMES`. From
+#: ``movable_signs`` / ``fixed_signs`` / ``dual_signs``. Same reasoning as the
+#: element table: a static property of the sign, guessable and therefore
+#: occasionally wrong, with no way for the model to check itself.
+#:
+#: Note the *sign's ruling planet* is deliberately NOT grounded here. It is
+#: equally static, but it is the one static property that feeds the chained
+#: house-lordship claim ``RULE_NO_DERIVED_CHART_FACTS`` blocks: 7th house is
+#: Pisces, Pisces is ruled by Jupiter, therefore "Jupiter rules your 7th
+#: house". See CONVENTIONS.md.
+SIGN_MODALITIES: Final[tuple[str, ...]] = _signs_by_group(
+    {
+        "movable": _jhora_const.movable_signs,
+        "fixed": _jhora_const.fixed_signs,
+        "dual": _jhora_const.dual_signs,
+    },
+    "modality",
+)
+
+
+def describe_sign(sign: str) -> str:
+    """``"Gemini"`` -> ``"Gemini (air, dual)"``.
+
+    :raises KeyError: the sign is not one of the twelve rashis.
+    """
+    try:
+        index = SIGN_NAMES.index(sign)
+    except ValueError as exc:
+        raise KeyError(f"unknown sign: {sign!r}") from exc
+    return f"{sign} ({SIGN_ELEMENTS[index]}, {SIGN_MODALITIES[index]})"
+
+
 #: The 27 nakshatras. We keep our own table rather than using
 #: ``jhora.utils.NAKSHATRA_LIST`` because the library's default language ships
 #: Tamil transliterations ("Karthigai", "Thiruvaathirai") and its sign/planet

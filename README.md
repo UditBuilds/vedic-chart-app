@@ -336,7 +336,7 @@ contains no `os.environ`, `getenv`, `api_key` or `requests.` usage.
 python -m pytest -q
 ```
 
-195 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
+219 tests, none of which need a Groq key. `tests/test_dasha.py` is the one to
 read first — the dasha boundary maths is where an off-by-one is most likely and
 least visible. `tests/test_conventions.py` pins the two deliberate departures
 above; `tests/test_transits.py` holds the AstroSage transit fixtures.
@@ -444,6 +444,13 @@ Two model behaviours are worth knowing about because they are not obvious:
 - **It enumerates crowded houses.** Every broad reply that overshot the
   citation ceiling did it the same way, listing each body in a shared house as
   a separate fact. They now count as one.
+- **It guessed static sign properties and got one wrong** — Gemini called
+  "water-sign-related"; it is air. Fixed by grounding rather than by another
+  rule: every sign in FACTS now reads `Gemini (air, dual)`, with element and
+  modality inverted out of the engine's own tables rather than retyped. A
+  sign's *ruling planet* is deliberately left ungrounded — it would complete
+  the chained house-lordship claim the derived-facts rule blocks. See
+  `CONVENTIONS.md`.
 
 Whether any of this lands is **not** something the test suite can settle —
 "relevant" versus "padding" is a judgement about a specific answer. The tests
