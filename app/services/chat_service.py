@@ -156,6 +156,34 @@ VOICE_FACT_RELEVANCE: Final[str] = (
     " Before you answer, count the chart facts you are about to cite; if there"
     " are more than four, drop the least important ones until there are not."
 )
+#: The overshoot that survived both the ceiling and the shared-house clause.
+#: "Give me a general read on where I'm at right now" kept landing at 5-6 facts
+#: by citing the natal placement of *both* running lords:
+#:
+#:   "Mars, the Mahadasha lord, is natal in Taurus in the 9th house.
+#:    Rahu, the antardasha lord, occupies Leo in the 12th house."
+#:
+#: Two distinct facts, not a groupable cluster, so the shared-house clause does
+#: nothing here and an honest fix has to cite less rather than recount.
+#:
+#: This is under-specification rather than disobedience. VOICE_FACT_RELEVANCE
+#: already said to prefer "the current dasha lord" -- singular -- but FACTS
+#: gives two lords that are both current, so reading it as "both" is fair. The
+#: fix is to say which one.
+#:
+#: Scoped to *natal placements* on purpose. Naming the periods themselves is a
+#: different act, and "What changes when my current dasha ends?" needs two of
+#: them -- the one ending and the one beginning. Observed answers to that
+#: question cite periods and dates and no natal placement at all, so this rule
+#: does not reach it and no second exception is needed.
+VOICE_ONE_DASHA_LORD: Final[str] = (
+    "Never give the natal placements of both the mahadasha lord and the"
+    " antardasha lord in one reply - that is two facts where one will do. Pick"
+    " one, normally the antardasha lord as the nearer-term influence. This holds"
+    " for any question about the period however it is phrased, including \"what"
+    " is the overall shape of this period\". Naming which periods run, or when"
+    " one ends and the next begins, is a separate thing and is always allowed."
+)
 VOICE_END_ON_OBSERVATION: Final[str] = (
     "End on an observation, not an affirmation."
 )
@@ -187,6 +215,7 @@ VOICE_MATCH_TIMESCALE: Final[str] = (
 VOICE_RULES: Final[tuple[str, ...]] = (
     VOICE_GROUNDED,
     VOICE_FACT_RELEVANCE,
+    VOICE_ONE_DASHA_LORD,
     VOICE_END_ON_OBSERVATION,
     VOICE_PLAIN_AND_CONTINUOUS,
     VOICE_MATCH_TIMESCALE,

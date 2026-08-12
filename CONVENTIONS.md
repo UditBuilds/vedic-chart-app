@@ -308,16 +308,9 @@ Two honest caveats, because the numbers flatter the change slightly:
   scored 5 where they now score 2. The behavioural change is real regardless —
   the model now writes one grouped phrase instead of a clause per body — but
   this is not a pure reduction and should not be quoted as one.
-- **It does not address the other overshoot shape.** The residual 5s and the
-  one 6 are not enumeration; they cite the dasha lords' natal placements
-  alongside the dasha and the transiting Moon — "Mars, the Mahadasha lord, is
-  natal in Taurus in the 9th house. Rahu, the antardasha lord, is natal in Leo
-  in the 12th house." Two distinct facts, not a groupable cluster, so an honest
-  fix means citing *less*, not relabelling the count. **Still open**, and
-  deliberately so: it was scoped for a follow-up that ran out of daily token
-  budget before it started. Note when picking it up that "cite only one lord"
-  must not break "What changes when my current dasha ends?", which legitimately
-  needs both.
+- **It does not address the other overshoot shape** — citing the natal
+  placement of both running lords at once. That is handled separately by
+  [`VOICE_ONE_DASHA_LORD`](#only-one-dasha-lords-natal-placement-per-reply).
 
 Two things to know before touching it:
 
@@ -369,6 +362,51 @@ deleting the marker would leave us unable to notice the behaviour returning.
 The detector ignores ordinary typography the model emits constantly
 (non-breaking hyphen, narrow no-break space, curly apostrophe); a test pins
 that, because flagging those would bury the signal.
+
+### Only one dasha lord's natal placement per reply
+
+`VOICE_ONE_DASHA_LORD`. The overshoot that survived both the citation ceiling
+and the shared-house clause:
+
+> "Mars, the Mahadasha lord, is natal in Taurus in the 9th house. Rahu, the
+> antardasha lord, occupies Leo in the 12th house."
+
+Two distinct facts, not a groupable cluster, so the shared-house clause does
+nothing here — an honest fix has to cite *less*, not recount.
+
+**It was under-specification, not disobedience.** `VOICE_FACT_RELEVANCE`
+already preferred "the current dasha lord", singular — but FACTS gives two
+lords that are both current, so reading it as "both" is fair. The fix names
+which one: the antardasha lord, as the nearer-term influence.
+
+**Scoped to natal placements on purpose.** Naming the periods is a different
+act, and "What changes when my current dasha ends?" needs two of them. Observed
+answers to that question cite periods and dates and no natal placement at all,
+so the rule does not reach it — no second exception needed, unlike the
+derived-facts rule. The exemption is still stated out loud in the rule text,
+and `test_naming_dasha_periods_is_exempt_from_the_one_lord_rule` fails if
+someone widens this to "cite one lord" generally.
+
+> **The first wording was wrong, and only testing found it.** It opened with
+> "Explaining the current period, ..." and the model read that scope narrowly:
+> **0/10** on "Give me a general read on where I'm at right now", the question
+> it was written from, but **5/6** still cited both lords on the sibling
+> "What's the overall shape of this period in my life?". Leading with the
+> prohibition and naming that phrasing explicitly took the sibling to **0/5**.
+> Third rule in a row where the first draft was wrong and testing before
+> shipping caught it — do not skip that step here.
+
+**A confound worth knowing before you re-measure.** On the reference chart the
+mahadasha lord is Mars, the antardasha lord is Rahu, *and the next mahadasha
+lord is also Rahu*. "Mars and Rahu" therefore appears both in the overshoot and
+in a correct answer to the transition question. The two can only be told apart
+by whether **natal placements** appear, not by which planets are named.
+
+**Not fully verified.** The daily token ceiling was hit mid-run. The reworded
+rule is confirmed on the question that was leaking (0/5) but the primary
+question has only n=1 under the new wording, and the transition regression was
+re-verified under the *first* wording (4/4) and not the second. Both are
+outstanding.
 
 ### Never assign a ruler or lord — the correctness trap, again
 

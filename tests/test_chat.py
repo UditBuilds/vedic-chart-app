@@ -428,6 +428,46 @@ def test_the_ceiling_is_stated_as_hard_and_countable(chart, transits) -> None:
     assert "count the chart facts you are about to cite" in prompt
 
 
+def test_only_one_dasha_lord_natal_placement_by_default(chart, transits) -> None:
+    """The overshoot the ceiling and the shared-house clause both missed.
+
+    "Give me a general read on where I'm at right now" kept landing at 5-6
+    facts by citing the natal placement of *both* running lords -- "Mars, the
+    Mahadasha lord, is natal in Taurus in the 9th house. Rahu, the antardasha
+    lord, occupies Leo in the 12th house." Two distinct facts, not a groupable
+    cluster, so recounting them as one would have been dishonest; the fix has
+    to cite less.
+
+    Note this was under-specification, not disobedience: the ceiling rule
+    already preferred "the current dasha lord", singular, but FACTS gives two
+    lords that are both current.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert ("never give the natal placements of both the mahadasha lord and the"
+            " antardasha lord in one reply") in prompt
+    assert "normally the antardasha lord" in prompt
+    # First wording scoped itself with "Explaining the current period," and the
+    # model read that narrowly: 0/10 on the question it was written from, but
+    # 5/6 still cited both lords on the sibling "what's the overall shape of
+    # this period in my life?". The prohibition now leads, and names that
+    # phrasing outright.
+    assert "for any question about the period however it is phrased" in prompt
+
+
+def test_naming_dasha_periods_is_exempt_from_the_one_lord_rule(chart, transits) -> None:
+    """The regression case, guarded at the level of the rule's wording.
+
+    "What changes when my current dasha ends?" needs two periods -- the one
+    ending and the one beginning. The rule is scoped to *natal placements* so
+    that it never reaches that question, and the exemption is stated out loud
+    rather than left to inference. If someone widens this rule to "cite one
+    lord" generally, this fails.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "naming which periods run, or when one ends and the next begins" in prompt
+    assert "is a separate thing and is always allowed" in prompt
+
+
 def test_shared_house_bodies_count_as_one_fact(chart, transits) -> None:
     """Every overshoot at 6+ facts was one shape: enumerating a crowded house.
 
