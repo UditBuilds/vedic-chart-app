@@ -10,12 +10,15 @@ import swisseph as swe
 from app.services.astrology import (
     NAKSHATRA_NAMES,
     PLANET_NAMES,
+    SIGN_ELEMENTS,
+    SIGN_MODALITIES,
     SIGN_NAMES,
     BirthData,
     CalculationError,
     EphemerisRangeError,
     InvalidBirthDataError,
     calculate_chart,
+    describe_sign,
 )
 
 REFERENCE_BIRTH = BirthData(
@@ -219,3 +222,87 @@ def test_degree_is_within_its_sign_for_every_body(chart) -> None:
     """Guards against an absolute longitude leaking into a per-sign field."""
     for planet in chart["planets"]:
         assert 0.0 <= planet["degree"] < 30.0, planet
+
+
+# ------------------------------------------------- static sign properties
+#
+# Grounded in FACTS because the model was observed asserting one from memory
+# and getting it wrong: it called Gemini "water-sign-related". Gemini is air.
+# Nothing in FACTS could contradict it, so there was no way for the answer to
+# be caught -- the fix is to put the property in front of the model, not to add
+# another rule telling it to be careful.
+
+
+def test_gemini_is_air_which_is_the_bug_that_prompted_this() -> None:
+    """The exact observed error, pinned."""
+    assert SIGN_ELEMENTS[SIGN_NAMES.index("Gemini")] == "air"
+    assert describe_sign("Gemini") == "Gemini (air, dual)"
+
+
+def test_element_and_modality_are_read_from_the_engine_not_retyped() -> None:
+    """A hand-copied table would be a second source of truth that can drift.
+
+    Two assumed defaults have already cost this project real time (the
+    ayanamsa, the node mode), so these are inverted out of ``jhora.const``'s
+    own grouping lists rather than written out here. This asserts the values
+    still agree with the library.
+    """
+    from jhora import const
+
+    for group, expected in (
+        (const.fire_signs, "fire"), (const.earth_signs, "earth"),
+        (const.air_signs, "air"), (const.water_signs, "water"),
+    ):
+        for index in group:
+            assert SIGN_ELEMENTS[index] == expected, SIGN_NAMES[index]
+    for group, expected in (
+        (const.movable_signs, "movable"), (const.fixed_signs, "fixed"),
+        (const.dual_signs, "dual"),
+    ):
+        for index in group:
+            assert SIGN_MODALITIES[index] == expected, SIGN_NAMES[index]
+
+
+def test_element_is_a_four_cycle_and_modality_a_three_cycle() -> None:
+    """An independent structural check, not a restatement of the table.
+
+    Triplicity and quadruplicity are definitional: every 4th sign from Aries
+    shares an element, every 3rd shares a modality. If the library's lists were
+    ever wrong, or inverted wrongly here, the cycle breaks. This is the closest
+    thing to a second source available offline.
+    """
+    for index in range(len(SIGN_NAMES)):
+        assert SIGN_ELEMENTS[index] == SIGN_ELEMENTS[index % 4], SIGN_NAMES[index]
+        assert SIGN_MODALITIES[index] == SIGN_MODALITIES[index % 3], SIGN_NAMES[index]
+
+
+def test_every_sign_has_exactly_one_element_and_one_modality() -> None:
+    assert len(SIGN_ELEMENTS) == len(SIGN_MODALITIES) == len(SIGN_NAMES) == 12
+    assert set(SIGN_ELEMENTS) == {"fire", "earth", "air", "water"}
+    assert set(SIGN_MODALITIES) == {"movable", "fixed", "dual"}
+    for element in ("fire", "earth", "air", "water"):
+        assert SIGN_ELEMENTS.count(element) == 3
+    for modality in ("movable", "fixed", "dual"):
+        assert SIGN_MODALITIES.count(modality) == 4
+
+
+def test_the_sign_ruler_is_deliberately_not_grounded() -> None:
+    """Scope decision, pinned so it is not "fixed" without reading why.
+
+    A sign's ruling planet is just as static as its element, and PyJHora has
+    the table (``const.house_lords_dict``). It is left out on purpose: it is
+    the one static property that completes the chained house-lordship claim
+    RULE_NO_DERIVED_CHART_FACTS blocks -- the 7th house is Pisces, Pisces is
+    ruled by Jupiter, therefore "Jupiter rules your 7th house". Grounding the
+    benign half would supply the missing link. See CONVENTIONS.md before
+    changing this.
+    """
+    assert describe_sign("Aries") == "Aries (fire, movable)"
+    for ruler in ("Mars", "Venus", "Mercury", "Jupiter", "Saturn"):
+        assert ruler not in describe_sign("Aries")
+        assert ruler not in describe_sign("Pisces")
+
+
+def test_describe_sign_rejects_something_that_is_not_a_sign() -> None:
+    with pytest.raises(KeyError, match="unknown sign"):
+        describe_sign("Ophiuchus")

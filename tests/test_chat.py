@@ -166,7 +166,7 @@ def test_natal_summary_names_every_graha(chart) -> None:
     rendered = facts.format_natal(chart)
     for planet in chart["planets"]:
         assert planet["name"] in rendered
-    assert "Virgo rising" in rendered
+    assert "Virgo (earth, dual) rising" in rendered
 
 
 def test_dasha_summary_carries_both_running_periods(chart) -> None:
@@ -222,7 +222,7 @@ def test_system_prompt_contains_facts_and_rules(chart, transits) -> None:
         assert phrase in prompt.lower(), f"{phrase!r} did not survive into the prompt"
     assert "Mahadasha: Mars" in prompt
     assert "Ardra" in prompt
-    assert "Virgo rising" in prompt
+    assert "Virgo (earth, dual) rising" in prompt
 
 
 def test_system_prompt_has_no_unfilled_placeholders(chart, transits) -> None:
@@ -279,6 +279,33 @@ def test_ordinal_suffixes_read_naturally(name, expected) -> None:
 def test_unknown_nakshatra_is_rejected() -> None:
     with pytest.raises(KeyError, match="unknown nakshatra"):
         facts.nakshatra_ordinal("Definitely Not A Nakshatra")
+
+
+def test_every_sign_in_facts_carries_element_and_modality(chart, transits) -> None:
+    """Grounded wherever a sign is stated, natal and transiting alike.
+
+    The observed failure -- "Mars in Gemini ... water-sign-related" -- was a
+    *transit* line, so annotating only the natal block would have left the
+    actual bug in place.
+    """
+    from app.services.astrology import SIGN_NAMES, describe_sign
+
+    rendered = facts.format_natal(chart) + "\n" + facts.format_transits(transits)
+    for line in rendered.splitlines():
+        for sign in SIGN_NAMES:
+            if re.search(rf"\b{sign}\b", line):
+                assert describe_sign(sign) in line, (
+                    f"sign {sign!r} appears unannotated in: {line!r}"
+                )
+
+
+def test_the_transit_line_for_gemini_is_annotated_air(transits) -> None:
+    """The exact line the model read wrongly, now carrying its own answer."""
+    rendered = facts.format_transits(transits)
+    gemini_lines = [l for l in rendered.splitlines() if "Gemini" in l]
+    assert gemini_lines, "fixture no longer has anything in Gemini; pick another sign"
+    for line in gemini_lines:
+        assert "Gemini (air, dual)" in line
 
 
 def test_natal_moon_nakshatra_carries_its_ordinal(chart) -> None:
@@ -399,6 +426,46 @@ def test_the_ceiling_is_stated_as_hard_and_countable(chart, transits) -> None:
     # general read on where I'm at right now") sat at 5-8 planets every run;
     # with it, 11 of 12 broad replies came in at four or fewer.
     assert "count the chart facts you are about to cite" in prompt
+
+
+def test_only_one_dasha_lord_natal_placement_by_default(chart, transits) -> None:
+    """The overshoot the ceiling and the shared-house clause both missed.
+
+    "Give me a general read on where I'm at right now" kept landing at 5-6
+    facts by citing the natal placement of *both* running lords -- "Mars, the
+    Mahadasha lord, is natal in Taurus in the 9th house. Rahu, the antardasha
+    lord, occupies Leo in the 12th house." Two distinct facts, not a groupable
+    cluster, so recounting them as one would have been dishonest; the fix has
+    to cite less.
+
+    Note this was under-specification, not disobedience: the ceiling rule
+    already preferred "the current dasha lord", singular, but FACTS gives two
+    lords that are both current.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert ("never give the natal placements of both the mahadasha lord and the"
+            " antardasha lord in one reply") in prompt
+    assert "normally the antardasha lord" in prompt
+    # First wording scoped itself with "Explaining the current period," and the
+    # model read that narrowly: 0/10 on the question it was written from, but
+    # 5/6 still cited both lords on the sibling "what's the overall shape of
+    # this period in my life?". The prohibition now leads, and names that
+    # phrasing outright.
+    assert "for any question about the period however it is phrased" in prompt
+
+
+def test_naming_dasha_periods_is_exempt_from_the_one_lord_rule(chart, transits) -> None:
+    """The regression case, guarded at the level of the rule's wording.
+
+    "What changes when my current dasha ends?" needs two periods -- the one
+    ending and the one beginning. The rule is scoped to *natal placements* so
+    that it never reaches that question, and the exemption is stated out loud
+    rather than left to inference. If someone widens this rule to "cite one
+    lord" generally, this fails.
+    """
+    prompt = _collapse(chat_service.build_system_prompt(chart, transits, [])).lower()
+    assert "naming which periods run, or when one ends and the next begins" in prompt
+    assert "is a separate thing and is always allowed" in prompt
 
 
 def test_shared_house_bodies_count_as_one_fact(chart, transits) -> None:

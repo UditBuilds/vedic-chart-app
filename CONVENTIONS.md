@@ -308,11 +308,9 @@ Two honest caveats, because the numbers flatter the change slightly:
   scored 5 where they now score 2. The behavioural change is real regardless —
   the model now writes one grouped phrase instead of a clause per body — but
   this is not a pure reduction and should not be quoted as one.
-- **It does not address the other overshoot shape.** The residual 5s and the
-  one 6 are not enumeration; they cite the dasha lords' natal placements
-  alongside the dasha and the transiting Moon. Every one of those facts is
-  individually defensible. That shape was never in this clause's scope and is
-  still open.
+- **It does not address the other overshoot shape** — citing the natal
+  placement of both running lords at once. That is handled separately by
+  [`VOICE_ONE_DASHA_LORD`](#only-one-dasha-lords-natal-placement-per-reply).
 
 Two things to know before touching it:
 
@@ -365,6 +363,51 @@ The detector ignores ordinary typography the model emits constantly
 (non-breaking hyphen, narrow no-break space, curly apostrophe); a test pins
 that, because flagging those would bury the signal.
 
+### Only one dasha lord's natal placement per reply
+
+`VOICE_ONE_DASHA_LORD`. The overshoot that survived both the citation ceiling
+and the shared-house clause:
+
+> "Mars, the Mahadasha lord, is natal in Taurus in the 9th house. Rahu, the
+> antardasha lord, occupies Leo in the 12th house."
+
+Two distinct facts, not a groupable cluster, so the shared-house clause does
+nothing here — an honest fix has to cite *less*, not recount.
+
+**It was under-specification, not disobedience.** `VOICE_FACT_RELEVANCE`
+already preferred "the current dasha lord", singular — but FACTS gives two
+lords that are both current, so reading it as "both" is fair. The fix names
+which one: the antardasha lord, as the nearer-term influence.
+
+**Scoped to natal placements on purpose.** Naming the periods is a different
+act, and "What changes when my current dasha ends?" needs two of them. Observed
+answers to that question cite periods and dates and no natal placement at all,
+so the rule does not reach it — no second exception needed, unlike the
+derived-facts rule. The exemption is still stated out loud in the rule text,
+and `test_naming_dasha_periods_is_exempt_from_the_one_lord_rule` fails if
+someone widens this to "cite one lord" generally.
+
+> **The first wording was wrong, and only testing found it.** It opened with
+> "Explaining the current period, ..." and the model read that scope narrowly:
+> **0/10** on "Give me a general read on where I'm at right now", the question
+> it was written from, but **5/6** still cited both lords on the sibling
+> "What's the overall shape of this period in my life?". Leading with the
+> prohibition and naming that phrasing explicitly took the sibling to **0/5**.
+> Third rule in a row where the first draft was wrong and testing before
+> shipping caught it — do not skip that step here.
+
+**A confound worth knowing before you re-measure.** On the reference chart the
+mahadasha lord is Mars, the antardasha lord is Rahu, *and the next mahadasha
+lord is also Rahu*. "Mars and Rahu" therefore appears both in the overshoot and
+in a correct answer to the transition question. The two can only be told apart
+by whether **natal placements** appear, not by which planets are named.
+
+**Not fully verified.** The daily token ceiling was hit mid-run. The reworded
+rule is confirmed on the question that was leaking (0/5) but the primary
+question has only n=1 under the new wording, and the transition regression was
+re-verified under the *first* wording (4/4) and not the second. Both are
+outstanding.
+
 ### Never assign a ruler or lord — the correctness trap, again
 
 `RULE_NO_DERIVED_CHART_FACTS`, `chat_service.py:109`.
@@ -408,15 +451,59 @@ not when it was asked for — the direct probes were already clean at that point
 Probing only the question shapes that name the thing you are testing will miss
 this class.
 
-> **Open, and a direct consequence of the element exception.** The final
-> combined run produced "Both planets are in water-sign-related houses" about
-> the Moon in Cancer and Mars in **Gemini** — Gemini is air. The exception that
-> permits naming a sign's element is being used to state an element claim that
-> is simply wrong. Nothing in FACTS carries elements at all, so there is no
-> grounding for the model to check itself against. Not fixed here: narrowing
-> this further was outside the brief, and the honest options are to drop the
-> element exception or to put elements in FACTS. Worth a decision before the
-> next round.
+The element exception once had no grounding behind it, and the model duly got
+one wrong — "Both planets are in water-sign-related houses" about the Moon in
+Cancer and Mars in **Gemini**, which is air. That is now fixed by grounding the
+property rather than by adding another rule: see
+[Static sign properties](#static-sign-properties-are-grounded-element-and-modality-only).
+
+### Static sign properties are grounded — element and modality only
+
+`SIGN_ELEMENTS`, `SIGN_MODALITIES` and `describe_sign()` in
+`app/services/astrology.py`; rendered by `facts.py` wherever a sign appears,
+natal and transiting alike, as `Gemini (air, dual)`.
+
+**Why grounded rather than ruled against.** The model asserted an element from
+memory and got it wrong (Gemini called water). A rule saying "be careful" has
+nothing behind it; a fact in FACTS does. The general principle: when a property
+is static, deterministic and cheap, putting it in front of the model converts a
+fabrication risk into a grounded answer — the same move already made for the
+nakshatra ordinal after "Ardra is the 8th".
+
+**Both tables are inverted out of `jhora.const`, not retyped.** The library
+already ships `fire_signs`/`earth_signs`/`air_signs`/`water_signs` and
+`movable_signs`/`fixed_signs`/`dual_signs`. A hand-copied table would be a
+second source of truth that can silently drift from the engine — the same class
+of risk as the assumed ayanamsa and the assumed node mode. `_signs_by_group()`
+raises if a sign gets two values or none, so a bad table fails at import rather
+than producing a plausible chart.
+
+Cross-checked structurally rather than by restating it: element is a perfect
+4-cycle from Aries and modality a perfect 3-cycle, which is what triplicity and
+quadruplicity mean. `test_element_is_a_four_cycle_and_modality_a_three_cycle`
+pins that, and it is the closest thing to an independent source available
+offline.
+
+**The sign's ruling planet is deliberately NOT grounded.** It is equally
+static, and PyJHora has it (`const.house_lords_dict`). It is left out because
+it is the one static property that completes the chained claim
+`RULE_NO_DERIVED_CHART_FACTS` blocks:
+
+> 7th house is Pisces → Pisces is ruled by Jupiter → "Jupiter rules your 7th
+> house"
+
+Grounding the benign half would hand the model the missing link to the half
+that took real effort to block. `test_the_sign_ruler_is_deliberately_not_grounded`
+pins the decision so it is not "completed" without reading this.
+**This is an accepted residual risk, not an oversight:** the model can still
+volunteer a sign ruler from memory, and nothing in FACTS contradicts it.
+Grounding it *and* verifying the chained claim stays blocked is the open
+follow-up — it needs a live token budget that was not available when this
+landed.
+
+**Cost:** +78 tokens per turn, measured. A turn goes ~1,650 → ~1,728, so the
+8,000/min ceiling allows 4.63 turns a minute instead of 4.85. The verification
+scripts pace at 2.4/min, so nothing there changes.
 
 ### Never describe a dasha sub-period that was not computed
 
