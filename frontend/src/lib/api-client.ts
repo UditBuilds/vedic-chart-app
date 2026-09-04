@@ -5,6 +5,43 @@ import { ChartData, BirthData } from './types/chart.types';
 // preventing client-side cross-origin CORS errors to Flask on port 5000.
 const API_BASE_URL = '';
 
+const CHAT_USER_ID_STORAGE_KEY = 'jyotiastro_user_id';
+
+let memoryUserId: string | null = null;
+
+function generateUserId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'user-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 11);
+}
+
+// Client-side identity used to isolate conversation histories between browsers.
+export function getOrCreateChatUserId(): string {
+  if (typeof window === 'undefined') {
+    if (!memoryUserId) {
+      memoryUserId = generateUserId();
+    }
+    return memoryUserId;
+  }
+
+  try {
+    const existing = localStorage.getItem(CHAT_USER_ID_STORAGE_KEY);
+    if (existing && existing.trim()) {
+      return existing.trim();
+    }
+    const newId = generateUserId();
+    localStorage.setItem(CHAT_USER_ID_STORAGE_KEY, newId);
+    return newId;
+  } catch {
+    // In-memory fallback if localStorage is blocked or unavailable (e.g. private mode)
+    if (!memoryUserId) {
+      memoryUserId = generateUserId();
+    }
+    return memoryUserId;
+  }
+}
+
 class AstrologyApiClient {
   private client: AxiosInstance;
 
@@ -89,7 +126,8 @@ class AstrologyApiClient {
     }
   }
 
-  public async sendChatMessage(birth: BirthData, message: string, userId = 'default_user'): Promise<{ reply: string; raw: any }> {
+  public async sendChatMessage(birth: BirthData, message: string, userId?: string): Promise<{ reply: string; raw: any }> {
+    const effectiveUserId = userId || getOrCreateChatUserId();
     try {
       const res = await this.client.post('/api/v1/chat', {
         birth: {
@@ -100,7 +138,7 @@ class AstrologyApiClient {
           tz_offset: birth.tz_offset,
         },
         message,
-        user_id: userId,
+        user_id: effectiveUserId,
       });
       return {
         reply: res.data.reply || res.data.message || (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)),
@@ -111,7 +149,8 @@ class AstrologyApiClient {
     }
   }
 
-  public async getPromptFacts(birth: BirthData, userId = 'default_user'): Promise<{ prompt: string }> {
+  public async getPromptFacts(birth: BirthData, userId?: string): Promise<{ prompt: string }> {
+    const effectiveUserId = userId || getOrCreateChatUserId();
     try {
       const res = await this.client.post('/api/v1/chat/prompt', {
         birth: {
@@ -121,7 +160,7 @@ class AstrologyApiClient {
           lon: birth.lon,
           tz_offset: birth.tz_offset,
         },
-        user_id: userId,
+        user_id: effectiveUserId,
       });
       return res.data;
     } catch (err: any) {
@@ -129,10 +168,11 @@ class AstrologyApiClient {
     }
   }
 
-  public async resetChatHistory(userId = 'default_user'): Promise<{ status: string; user_id: string; cleared: number }> {
+  public async resetChatHistory(userId?: string): Promise<{ status: string; user_id: string; cleared: number }> {
+    const effectiveUserId = userId || getOrCreateChatUserId();
     try {
       const res = await this.client.post('/api/v1/chat/reset', {
-        user_id: userId,
+        user_id: effectiveUserId,
       });
       return res.data;
     } catch (err: any) {
@@ -140,10 +180,11 @@ class AstrologyApiClient {
     }
   }
 
-  public async getChatHistory(userId = 'default_user'): Promise<{ user_id: string; messages: Array<{ role: string; content: string; created_at?: string }> }> {
+  public async getChatHistory(userId?: string): Promise<{ user_id: string; messages: Array<{ role: string; content: string; created_at?: string }> }> {
+    const effectiveUserId = userId || getOrCreateChatUserId();
     try {
       const res = await this.client.get('/api/v1/chat/history', {
-        params: { user_id: userId },
+        params: { user_id: effectiveUserId },
       });
       return res.data;
     } catch (err: any) {
