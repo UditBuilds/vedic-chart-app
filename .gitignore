@@ -1,28 +1,57 @@
-# Python
+# Python & Calculations
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
-
-# Virtual environments
 .venv/
 venv/
 env/
 
-# Editors / OS
+# Node.js & Full-Stack Monorepo
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js & Frontend Build Outputs
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+
+# Runtime Environments & Secrets
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+frontend/.env.local
+!.env.example
+!frontend/.env.example
+!backend/.env.example
+
+# Local State, Databases & Logs
+*.db
+*.sqlite3
+instance/
+*.local
+*.log
+logs/
+coverage/
+
+# Editors & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# Local overrides
-instance/
-*.local
+# Machine Sync Conflicts
+*-Omen*
 
-# Chat history and cached charts -- local state, and it contains conversation
-# content. Never commit it.
-*.db
-*.sqlite3
-
-# API keys
-.env

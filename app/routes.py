@@ -19,6 +19,7 @@ from app.services.astrology import (
     InvalidBirthDataError,
     calculate_chart,
 )
+from app.services.geo import search_cities
 
 logger = logging.getLogger(__name__)
 
@@ -70,3 +71,11 @@ def chart() -> tuple[Any, int]:
         return _error(str(exc), 500, "calculation_failed")
 
     return jsonify(result), 200
+
+
+@bp.get("/api/v1/geo/search")
+def geo_search() -> tuple[Any, int]:
+    """Offline city autocomplete search."""
+    q = request.args.get("q", "").strip()
+    limit = min(max(request.args.get("limit", 10, type=int), 1), 50)
+    results = search_cities(q, limit=limit)

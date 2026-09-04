@@ -6,10 +6,7 @@ from flask import Flask
 
 
 def create_app() -> Flask:
-    """Build the Flask app.
-
-    No database, no auth, no sessions -- v1 is a stateless calculator.
-    """
+    """Build the Flask app."""
     app = Flask(__name__)
     # Preserve the key order of the chart payload; it reads far better when a
     # human inspects the response by eye.
