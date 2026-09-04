@@ -103,7 +103,7 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
         </div>
       </section>
 
-      {/* 3. Today's Celestial Horizon */}
+      {/* 3. Today's Celestial Horizon — stacked vertically */}
       <section className="pt-8 border-t border-zinc-900 space-y-5">
         <div>
           <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
@@ -114,21 +114,23 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="divide-y divide-zinc-900 border-y border-zinc-900">
           {wisdom.horizon.map((h, idx) => (
-            <div key={idx} className="space-y-1.5">
-              <span className="font-mono-code text-[10px] text-zinc-500 uppercase tracking-widest block">
-                {h.domain}
-              </span>
-              <div>
-                <span className="font-headline text-base sm:text-lg font-bold text-white block">
+            <div key={idx} className="py-3.5 space-y-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-mono-code text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">
+                  {h.domain}
+                </span>
+                <span className="text-zinc-700 select-none">•</span>
+                <span className="font-headline text-sm font-bold text-white">
                   {h.planet}
                 </span>
-                <span className="font-mono-code text-xs text-zinc-400 block">
-                  in {h.sign}
+                <span className="text-zinc-500 text-xs font-serif-poetic">in</span>
+                <span className="font-headline text-sm font-bold text-white">
+                  {h.sign}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 leading-relaxed pt-0.5">
+              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
                 {h.desc}
               </p>
             </div>
@@ -137,24 +139,24 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
       </section>
 
       {/* 4. AI Companion Teaser */}
-      <div className="pt-8 border-t border-zinc-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
-            INTERPRETIVE INTELLIGENCE
-          </span>
-          <h3 className="font-headline text-lg sm:text-xl font-bold text-white tracking-tight">
-            Consult Your Grounded Vedic Companion
-          </h3>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-md">
-            Ask questions grounded strictly in your natal placements, running dasha cycles, and current transits.
-          </p>
+      <div className="pt-8 border-t border-zinc-900 space-y-2">
+        <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
+          INTERPRETIVE INTELLIGENCE
+        </span>
+        <h3 className="font-headline text-lg sm:text-xl font-bold text-white tracking-tight">
+          Consult Your Grounded Vedic Companion
+        </h3>
+        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
+          Ask questions grounded strictly in your natal placements, running dasha cycles, and current transits.
+        </p>
+        <div className="pt-2">
+          <button
+            onClick={() => onNavigateTab('companion')}
+            className="text-zinc-400 hover:text-white transition-colors text-[11px] font-bold font-mono-code tracking-wider uppercase underline underline-offset-4 decoration-zinc-800 hover:decoration-white inline-flex items-center gap-1.5"
+          >
+            Open Companion →
+          </button>
         </div>
-        <button
-          onClick={() => onNavigateTab('companion')}
-          className="px-5 py-2.5 bg-white text-black font-bold font-mono-code text-xs uppercase tracking-widest hover:bg-zinc-200 transition-colors shrink-0 flex items-center gap-2"
-        >
-          OPEN COMPANION <ArrowRight className="h-3.5 w-3.5" />
-        </button>
       </div>
     </motion.div>
   );

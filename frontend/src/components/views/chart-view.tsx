@@ -12,6 +12,12 @@ interface ChartViewProps {
   chart: ChartData;
 }
 
+function formatHouse(house: number | undefined | null): string | null {
+  if (!house || typeof house !== 'number' || house < 1 || house > 12) return null;
+  const suffix = ['th', 'st', 'nd', 'rd'][(house % 10 < 4 && (house % 100 < 10 || house % 100 > 20)) ? house % 10 : 0];
+  return `${house}${suffix} House`;
+}
+
 export function ChartView({ chart }: ChartViewProps) {
   const [kundliOpen, setKundliOpen] = useState(false);
 
@@ -28,7 +34,6 @@ export function ChartView({ chart }: ChartViewProps) {
       subtitle: `${ascendant.nakshatra} (Pada ${ascendant.pada}) • ${ascendant.degree.toFixed(2)}°`,
       desc: 'Your outward presence, instinctive interface with the physical world, and how you naturally organize experience.',
       element: SIGN_INFO[ascendant.sign]?.element || 'Fire',
-      prefix: 'Lagna essence',
     },
     {
       roleKey: 'Moon',
@@ -37,7 +42,6 @@ export function ChartView({ chart }: ChartViewProps) {
       subtitle: `${moonPlanet?.nakshatra || ''} (Pada ${moonPlanet?.pada || 1}) • ${moonPlanet?.degree.toFixed(2) || '0.00'}°`,
       desc: 'Your subconscious mind, internal emotional sanctuary, memory processing, and instinctive needs.',
       element: SIGN_INFO[chart.moon_rashi]?.element || 'Water',
-      prefix: 'Moon essence',
     },
     {
       roleKey: 'Sun',
@@ -46,7 +50,6 @@ export function ChartView({ chart }: ChartViewProps) {
       subtitle: `${sunPlanet?.nakshatra || ''} (Pada ${sunPlanet?.pada || 1}) • ${sunPlanet?.degree.toFixed(2) || '0.00'}°`,
       desc: 'Your core vital essence, sovereign purpose, conscious life direction, and enduring vitality.',
       element: SIGN_INFO[sunPlanet?.sign || 'Taurus']?.element || 'Earth',
-      prefix: 'Sun essence',
     },
   ];
 
@@ -104,10 +107,12 @@ export function ChartView({ chart }: ChartViewProps) {
                 {item.desc}
               </p>
 
-              {/* Role-Qualified Essence (Avoids byte-identical duplicate line across same signs) */}
-              <p className="font-mono-code text-[11px] text-zinc-500 tracking-wide pt-0.5">
-                <span className="text-zinc-400 uppercase tracking-wider">{item.prefix}:</span> {SIGN_INFO[item.sign]?.essence}
-              </p>
+              {/* Essence line appears once only on the Rising sign */}
+              {item.roleKey === 'Rising' && SIGN_INFO[item.sign]?.essence && (
+                <p className="font-mono-code text-[11px] text-zinc-500 tracking-wide pt-0.5">
+                  <span className="text-zinc-400 uppercase tracking-wider">ESSENCE:</span> {SIGN_INFO[item.sign].essence}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -156,32 +161,59 @@ export function ChartView({ chart }: ChartViewProps) {
           </h2>
         </div>
 
-        {/* Single-Baseline Planetary Rows */}
+        {/* Single-Baseline Planetary Rows — Uniform structure across all 9 rows */}
         <div className="divide-y divide-zinc-900 border-y border-zinc-900">
           {chart.planets.map((planet) => {
             const domainInfo = PLANET_DOMAINS[planet.name];
+            const details: { text: string; className: string }[] = [];
+            if (typeof planet.degree === 'number') {
+              details.push({
+                text: `${planet.degree.toFixed(2)}°${planet.retrograde ? ' ℞' : ''}`,
+                className: 'text-zinc-300',
+              });
+            }
+            const houseLabel = formatHouse(planet.house);
+            if (houseLabel) {
+              details.push({
+                text: houseLabel,
+                className: 'text-zinc-400',
+              });
+            }
+            if (planet.nakshatra) {
+              details.push({
+                text: `${planet.nakshatra}${planet.pada ? ` (Pada ${planet.pada})` : ''}`,
+                className: 'text-zinc-500',
+              });
+            }
+
             return (
               <div key={planet.name} className="py-3 space-y-1">
-                {/* Line 1: Single consistent baseline reading left-to-right */}
-                <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap text-sm">
-                  <span className="font-headline font-bold text-white">
-                    {planet.name}
-                  </span>
-                  <span className="text-zinc-500 text-xs font-serif-poetic">in</span>
-                  <span className="font-headline font-bold text-white">
-                    {planet.sign}
-                  </span>
-                  <span className="font-mono-code text-xs text-zinc-300">
-                    {planet.degree.toFixed(2)}°{planet.retrograde ? ' ℞' : ''}
-                  </span>
-                  <span className="text-zinc-700 select-none">•</span>
-                  <span className="font-mono-code text-xs text-zinc-400">
-                    {HOUSE_AREAS[planet.house]}
-                  </span>
-                  <span className="text-zinc-700 select-none">•</span>
-                  <span className="font-mono-code text-xs text-zinc-500">
-                    {planet.nakshatra} (Pada {planet.pada})
-                  </span>
+                {/* Line 1: Single consistent baseline reading left-to-right without overflow */}
+                <div className="flex items-baseline gap-x-2 text-sm flex-wrap">
+                  <div className="flex items-baseline gap-1.5 shrink-0">
+                    <span className="font-headline font-bold text-white">
+                      {planet.name}
+                    </span>
+                    <span className="text-zinc-500 text-xs font-serif-poetic">in</span>
+                    <span className="font-headline font-bold text-white">
+                      {planet.sign}
+                    </span>
+                  </div>
+
+                  {details.length > 0 && (
+                    <div className="flex items-baseline gap-1.5 font-mono-code text-xs">
+                      {details.map((item, idx) => (
+                        <React.Fragment key={idx}>
+                          {idx > 0 && (
+                            <span className="text-zinc-700 select-none shrink-0">•</span>
+                          )}
+                          <span className={`${item.className} shrink-0`}>
+                            {item.text}
+                          </span>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Line 2: Category domain and role description */}
