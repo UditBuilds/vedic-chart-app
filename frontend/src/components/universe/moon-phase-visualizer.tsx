@@ -76,7 +76,7 @@ export function MoonPhaseVisualizer({ chart }: { chart: ChartData }) {
         <div className="font-mono-code text-[10px] space-y-1.5 text-slate-400">
           <div className="text-white font-bold tracking-wider uppercase">{phaseName}</div>
           <div>TITHI: {tithiNum} / 30</div>
-          <div className="text-slate-500 uppercase tracking-widest">[ CO-STAR CAL ]</div>
+          <div className="text-slate-500 uppercase tracking-widest">[ JYOTIASTRO CAL ]</div>
         </div>
       </div>
     </div>

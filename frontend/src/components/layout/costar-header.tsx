@@ -27,8 +27,8 @@ export function CostarHeader({ activeTab, onSelectTab, onOpenBirthModal, chart }
     <header className="h-16 border-b border-zinc-900 bg-black/90 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-8 flex items-center justify-between">
       {/* Brandmark */}
       <div className="flex items-baseline gap-2.5 select-none cursor-pointer" onClick={() => onSelectTab('feed')}>
-        <span className="font-brand font-bold text-lg text-white tracking-[0.2em] uppercase">
-          CO—STAR
+        <span className="font-brand font-bold text-lg text-white tracking-[0.08em]">
+          JyotiAstro
         </span>
         <span className="font-mono-code text-[11px] text-zinc-500 tracking-[0.25em] uppercase">
           VEDIC

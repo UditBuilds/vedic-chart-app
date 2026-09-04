@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'CO—STAR // VEDIC — Sidereal Astrological Intelligence',
+  title: 'JyotiAstro // Vedic — Sidereal Astrological Intelligence',
   description:
     'Minimalist Vedic sidereal astrology. Plain human language, daily vibe feed, your natal chart blueprint, and grounded AI companion.',
 };
