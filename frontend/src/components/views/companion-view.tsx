@@ -93,27 +93,27 @@ export function CompanionView({ chart }: CompanionViewProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="max-w-4xl mx-auto space-y-6"
+      className="space-y-4"
     >
       {/* Top Action Bar */}
-      <div className="flex justify-between items-center pb-4 border-b border-zinc-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-900">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-mono-code text-xs text-zinc-400 font-semibold tracking-wider uppercase">
             GROUNDED SIDEREAL LLM
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setFactsModalOpen(true)}
-            className="text-zinc-400 hover:text-white font-mono-code text-xs transition-colors flex items-center gap-1.5 uppercase tracking-wider"
+            className="text-zinc-400 hover:text-white font-mono-code text-[11px] transition-colors flex items-center gap-1.5 uppercase tracking-wider"
           >
             <Eye className="h-3 w-3" /> FACTS AUDITOR
           </button>
           <span className="text-zinc-700 select-none">|</span>
           <button
             onClick={handleReset}
-            className="text-zinc-400 hover:text-white font-mono-code text-xs transition-colors flex items-center gap-1.5 uppercase tracking-wider"
+            className="text-zinc-400 hover:text-white font-mono-code text-[11px] transition-colors flex items-center gap-1.5 uppercase tracking-wider"
           >
             <RefreshCw className="h-3 w-3" /> RESET
           </button>
@@ -121,9 +121,9 @@ export function CompanionView({ chart }: CompanionViewProps) {
       </div>
 
       {/* Main Chat Stream (Unboxed Flat Layout) */}
-      <div className="flex flex-col h-[70vh]">
+      <div className="flex flex-col h-[65vh]">
         {/* Suggestion Chips */}
-        <div className="pb-4 border-b border-zinc-900 flex items-center gap-2 overflow-x-auto select-none">
+        <div className="pb-3 border-b border-zinc-900 flex items-center gap-2 overflow-x-auto select-none">
           <span className="font-mono-code text-[10px] text-zinc-600 uppercase tracking-wider shrink-0">
             PROMPTS:
           </span>

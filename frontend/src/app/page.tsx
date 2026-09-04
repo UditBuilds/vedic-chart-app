@@ -86,7 +86,7 @@ export default function App() {
       />
 
       {/* Main Viewport */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 sm:px-12 md:px-16 py-10 md:py-16 pb-24 md:pb-20">
+      <main className="flex-1 max-w-[65ch] w-full mx-auto px-5 sm:px-6 py-6 md:py-10 pb-20">
         {loading ? (
           <div className="h-[50vh] flex flex-col items-center justify-center space-y-4">
             <div className="h-6 w-6 rounded-full border-2 border-white border-t-transparent animate-spin" />
@@ -114,20 +114,20 @@ export default function App() {
             </div>
           </div>
         ) : chart ? (
-          <div className="space-y-12 md:space-y-16">
+          <div className="space-y-8 md:space-y-10">
             {/* Active Profile Status Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-900 font-mono-code text-xs">
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-zinc-500 uppercase tracking-wider">ACTIVE MOMENT:</span>
-                <span className="text-white font-bold">{birthData.city_name || 'Custom Location'}</span>
-                <span className="text-zinc-500 font-normal">({birthData.date} • {birthData.time})</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-900 font-mono-code text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-zinc-500 uppercase tracking-wider">MOMENT:</span>
+                <span className="text-white font-semibold">{birthData.city_name || 'Custom Location'}</span>
+                <span className="text-zinc-500">({birthData.date} • {birthData.time})</span>
               </div>
               <button
                 onClick={() => setIsBirthModalOpen(true)}
-                className="text-zinc-400 hover:text-white transition-colors uppercase text-[11px] font-bold tracking-wider underline underline-offset-4 decoration-zinc-800 hover:decoration-white"
+                className="text-zinc-400 hover:text-white transition-colors text-[11px] font-bold tracking-wider uppercase underline underline-offset-4 decoration-zinc-800 hover:decoration-white"
               >
-                Recalculate Chart →
+                Recalculate →
               </button>
             </div>
 

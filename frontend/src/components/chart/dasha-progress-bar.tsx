@@ -31,17 +31,18 @@ export function DashaProgressBar({ timeline, currentMaha, currentAntara }: Dasha
       </div>
 
       {/* Sub-Period Active Callout — unboxed plain text */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1 font-mono-code text-xs">
-        <div>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-widest block mb-0.5">
-            ACTIVE SUB-PERIOD (BHUKTI)
-          </span>
+      <div className="space-y-0.5 pt-1 font-mono-code text-xs">
+        <span className="text-[10px] text-zinc-500 uppercase tracking-widest block">
+          ACTIVE SUB-PERIOD (BHUKTI)
+        </span>
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-white font-semibold">
             {currentAntara?.lord || 'Current'} Antardasha
           </span>
-        </div>
-        <div className="text-[11px] text-zinc-400">
-          {currentAntara?.start} → {currentAntara?.end}
+          <span className="text-zinc-600 select-none">•</span>
+          <span className="text-[11px] text-zinc-400">
+            {currentAntara?.start} → {currentAntara?.end}
+          </span>
         </div>
       </div>
     </div>
