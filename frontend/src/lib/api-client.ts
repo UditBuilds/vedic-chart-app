@@ -1,7 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
 import { ChartData, BirthData } from './types/chart.types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Always use same-origin relative path in the browser to route through the Next.js proxy,
+// preventing client-side cross-origin CORS errors to Flask on port 5000.
+const API_BASE_URL = '';
 
 class AstrologyApiClient {
   private client: AxiosInstance;
