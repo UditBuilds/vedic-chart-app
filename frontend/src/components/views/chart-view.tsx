@@ -22,7 +22,6 @@ export function ChartView({ chart }: ChartViewProps) {
 
   const bigThree = [
     {
-      num: '01',
       role: 'RISING SIGN (LAGNA)',
       sign: ascendant.sign,
       subtitle: `${ascendant.nakshatra} (Pada ${ascendant.pada}) • ${ascendant.degree.toFixed(2)}°`,
@@ -30,7 +29,6 @@ export function ChartView({ chart }: ChartViewProps) {
       element: SIGN_INFO[ascendant.sign]?.element || 'Fire',
     },
     {
-      num: '02',
       role: 'MOON SIGN (RASHI)',
       sign: chart.moon_rashi,
       subtitle: `${moonPlanet?.nakshatra || ''} (Pada ${moonPlanet?.pada || 1}) • ${moonPlanet?.degree.toFixed(2) || '0.00'}°`,
@@ -38,7 +36,6 @@ export function ChartView({ chart }: ChartViewProps) {
       element: SIGN_INFO[chart.moon_rashi]?.element || 'Water',
     },
     {
-      num: '03',
       role: 'SUN SIGN (SURYA)',
       sign: sunPlanet?.sign || 'Taurus',
       subtitle: `${sunPlanet?.nakshatra || ''} (Pada ${sunPlanet?.pada || 1}) • ${sunPlanet?.degree.toFixed(2) || '0.00'}°`,
@@ -53,55 +50,58 @@ export function ChartView({ chart }: ChartViewProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="space-y-12 max-w-4xl mx-auto"
+      className="space-y-16 md:space-y-24 max-w-5xl mx-auto"
     >
       {/* ========================================================================= */}
       {/* 1. THE BIG THREE HIGHLIGHT                                                */}
       {/* ========================================================================= */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
+      <section className="space-y-8">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
-              01 // NATAL ANATOMY
+            <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
+              NATAL ANATOMY
             </span>
-            <h2 className="font-headline text-2xl font-bold text-white tracking-tight">
+            <h2 className="font-headline text-2xl sm:text-4xl font-bold text-white tracking-tight">
               The Big Three Blueprint
             </h2>
           </div>
-          <span className="font-mono-code text-[10px] text-zinc-600 uppercase">
+          <span className="font-mono-code text-[10px] text-zinc-600 uppercase tracking-widest">
             WHOLE-SIGN SIDEREAL
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {bigThree.map((item) => (
+        {/* Vertically Stacked with Generous Whitespace */}
+        <div className="space-y-12 md:space-y-16">
+          {bigThree.map((item, idx) => (
             <div
-              key={item.num}
-              className="p-6 rounded border border-zinc-800 bg-zinc-950 flex flex-col justify-between hover:border-zinc-700 transition-colors"
+              key={item.role}
+              className={`space-y-4 ${idx !== 0 ? 'pt-12 md:pt-16 border-t border-zinc-900' : ''}`}
             >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="font-mono-code text-[11px] text-zinc-500 font-semibold uppercase tracking-widest">
+                  {item.role}
+                </span>
+                <span className="font-mono-code text-xs text-zinc-500 uppercase tracking-wider">
+                  {item.element}
+                </span>
+              </div>
+
               <div>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-mono-code text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                    {item.num} / {item.role}
-                  </span>
-                  <span className="font-mono-code text-[9px] px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
-                    {item.element}
-                  </span>
-                </div>
-                <h3 className="font-headline text-2xl font-bold text-white mb-1">
+                <h3 className="font-headline text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-none mb-2">
                   {item.sign}
                 </h3>
-                <p className="font-mono-code text-xs text-zinc-400 mb-4">
+                <p className="font-mono-code text-xs sm:text-sm text-zinc-400">
                   {item.subtitle}
-                </p>
-                <p className="text-xs text-zinc-300 leading-relaxed">
-                  {item.desc}
                 </p>
               </div>
 
-              <div className="mt-6 pt-3 border-t border-zinc-900 font-mono-code text-[10px] text-zinc-500">
+              <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-3xl font-normal">
+                {item.desc}
+              </p>
+
+              <p className="font-mono-code text-[11px] text-zinc-500 tracking-wide">
                 {SIGN_INFO[item.sign]?.essence}
-              </div>
+              </p>
             </div>
           ))}
         </div>
@@ -110,22 +110,22 @@ export function ChartView({ chart }: ChartViewProps) {
       {/* ========================================================================= */}
       {/* 2. CURRENT LIFE CHAPTER (VIMSHOTTARI DASHA)                               */}
       {/* ========================================================================= */}
-      <section className="p-6 sm:p-8 rounded border border-zinc-800 bg-zinc-950 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-800">
+      <section className="pt-16 border-t border-zinc-900 space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
           <div>
-            <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
-              02 // CURRENT LIFE CHAPTER
+            <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
+              CURRENT LIFE CHAPTER
             </span>
-            <h2 className="font-headline text-xl font-bold text-white tracking-tight">
+            <h2 className="font-headline text-2xl sm:text-4xl font-bold text-white tracking-tight">
               {chart.dasha?.current_mahadasha?.lord} Mahadasha Cycle
             </h2>
           </div>
           <div className="font-mono-code text-xs text-zinc-400">
-            Chapter Range: <span className="text-white">{chart.dasha?.current_mahadasha?.start}</span> → <span className="text-white">{chart.dasha?.current_mahadasha?.end}</span>
+            {chart.dasha?.current_mahadasha?.start} → {chart.dasha?.current_mahadasha?.end}
           </div>
         </div>
 
-        <p className="text-sm text-zinc-300 leading-relaxed">
+        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-3xl font-normal">
           The major theme of this overarching era is governed by <span className="text-white font-semibold">{chart.dasha?.current_mahadasha?.lord}</span> ({PLANET_DOMAINS[chart.dasha?.current_mahadasha?.lord]?.domain || 'Karmic Growth'}). You are cultivating long-term mastery in this life area.
         </p>
 
@@ -140,52 +140,69 @@ export function ChartView({ chart }: ChartViewProps) {
       {/* ========================================================================= */}
       {/* 3. PLANETARY BLUEPRINT (9 GRAHAS)                                         */}
       {/* ========================================================================= */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
+      <section className="pt-16 border-t border-zinc-900 space-y-8">
+        <div className="flex items-baseline justify-between gap-3">
           <div>
-            <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
-              03 // COMPLETE BLUEPRINT
+            <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
+              NATAL BLUEPRINT
             </span>
-            <h2 className="font-headline text-2xl font-bold text-white tracking-tight">
+            <h2 className="font-headline text-2xl sm:text-4xl font-bold text-white tracking-tight">
               Planetary Placements & Life Areas
             </h2>
           </div>
-          <span className="font-mono-code text-[10px] text-zinc-600 uppercase">
+          <span className="font-mono-code text-[10px] text-zinc-600 uppercase tracking-widest">
             9 GRAHAS
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Flat Rows with Hairline Dividers */}
+        <div className="divide-y divide-zinc-900 border-y border-zinc-900">
           {chart.planets.map((planet) => {
             const domainInfo = PLANET_DOMAINS[planet.name];
             return (
               <div
                 key={planet.name}
-                className="p-5 rounded border border-zinc-800 bg-zinc-950 flex flex-col justify-between hover:border-zinc-700 transition-colors"
+                className="py-5 sm:py-6 flex flex-col md:flex-row md:items-baseline justify-between gap-4"
               >
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-mono-code text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                      {domainInfo?.domain || 'LIFE AREA'}
+                {/* Left: Planet, Sign, Degree + Retrograde ℞ */}
+                <div className="md:w-1/3 space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-headline text-xl sm:text-2xl font-bold text-white">
+                      {planet.name}
                     </span>
+                    <span className="text-zinc-500 text-sm font-serif-poetic">in</span>
+                    <span className="font-headline text-xl sm:text-2xl font-bold text-white">
+                      {planet.sign}
+                    </span>
+                  </div>
+                  <div className="font-mono-code text-xs text-zinc-400 flex items-center gap-2">
+                    <span>{planet.degree.toFixed(2)}°</span>
                     {planet.retrograde && (
-                      <span className="font-mono-code text-[9px] px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-white font-bold">
-                        RETROGRADE
+                      <span className="text-white font-serif font-bold text-sm select-none" title="Retrograde">
+                        ℞
                       </span>
                     )}
+                    <span className="text-zinc-600">•</span>
+                    <span>{HOUSE_AREAS[planet.house]}</span>
                   </div>
-                  <h4 className="font-headline text-lg font-bold text-white mb-0.5">
-                    {planet.name} in {planet.sign}
-                  </h4>
-                  <div className="font-mono-code text-xs text-zinc-400 mb-3">
-                    {HOUSE_AREAS[planet.house]} • {planet.degree.toFixed(2)}°
-                  </div>
-                  <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+                </div>
+
+                {/* Middle: Domain & Archetypal Role */}
+                <div className="md:w-1/2 space-y-1">
+                  <span className="font-mono-code text-[10px] text-zinc-500 uppercase tracking-widest block">
+                    {domainInfo?.domain || 'LIFE AREA'}
+                  </span>
+                  <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
                     {domainInfo?.archetypalRole}.
                   </p>
                 </div>
-                <div className="pt-2 border-t border-zinc-900 font-mono-code text-[10px] text-zinc-500">
-                  {planet.nakshatra} (Pada {planet.pada})
+
+                {/* Right: Nakshatra info */}
+                <div className="md:w-1/6 md:text-right font-mono-code text-xs text-zinc-500 shrink-0">
+                  {planet.nakshatra}
+                  <span className="block text-[10px] text-zinc-600">
+                    Pada {planet.pada}
+                  </span>
                 </div>
               </div>
             );
@@ -196,22 +213,24 @@ export function ChartView({ chart }: ChartViewProps) {
       {/* ========================================================================= */}
       {/* 4. TRADITIONAL KUNDLI SVG (COLLAPSIBLE)                                    */}
       {/* ========================================================================= */}
-      <section className="pt-4 border-t border-zinc-800">
+      <section className="pt-16 border-t border-zinc-900 space-y-6">
         <button
           onClick={() => setKundliOpen(!kundliOpen)}
-          className="w-full p-4 rounded border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-900 text-left flex items-center justify-between transition-colors"
+          className="w-full py-4 text-left flex items-center justify-between group transition-colors"
         >
           <div className="flex items-center gap-3">
-            <Compass className="h-4 w-4 text-white" />
-            <span className="font-mono-code text-xs font-bold text-white uppercase tracking-wider">
-              {kundliOpen ? '[-] HIDE TRADITIONAL VEDIC KUNDLI (D1)' : '[+] VIEW TRADITIONAL VEDIC KUNDLI (D1)'}
+            <Compass className="h-4 w-4 text-zinc-400 group-hover:text-white transition-colors" />
+            <span className="font-mono-code text-xs font-bold text-zinc-300 group-hover:text-white uppercase tracking-wider transition-colors">
+              {kundliOpen ? 'Hide Traditional Vedic Kundli (D1)' : 'View Traditional Vedic Kundli (D1)'}
             </span>
           </div>
-          {kundliOpen ? <ChevronUp className="h-4 w-4 text-zinc-400" /> : <ChevronDown className="h-4 w-4 text-zinc-400" />}
+          <span className="font-mono-code text-xs text-zinc-500 group-hover:text-white">
+            {kundliOpen ? '↑' : '↓'}
+          </span>
         </button>
 
         {kundliOpen && (
-          <div className="mt-4 p-6 rounded border border-zinc-800 bg-zinc-950 animate-fadeIn">
+          <div className="pt-4 border-t border-zinc-900">
             <KundliRenderer chart={chart} />
           </div>
         )}

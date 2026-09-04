@@ -93,36 +93,37 @@ export function CompanionView({ chart }: CompanionViewProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="max-w-3xl mx-auto space-y-4"
+      className="max-w-4xl mx-auto space-y-6"
     >
       {/* Top Action Bar */}
-      <div className="flex justify-between items-center px-2">
+      <div className="flex justify-between items-center pb-4 border-b border-zinc-900">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-mono-code text-xs text-zinc-400 font-semibold tracking-wider uppercase">
             GROUNDED SIDEREAL LLM
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setFactsModalOpen(true)}
-            className="px-3 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 font-mono-code text-xs transition-colors flex items-center gap-1.5"
+            className="text-zinc-400 hover:text-white font-mono-code text-xs transition-colors flex items-center gap-1.5 uppercase tracking-wider"
           >
-            <Eye className="h-3 w-3" /> /FACTS AUDITOR
+            <Eye className="h-3 w-3" /> FACTS AUDITOR
           </button>
+          <span className="text-zinc-700 select-none">|</span>
           <button
             onClick={handleReset}
-            className="px-3 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 font-mono-code text-xs transition-colors flex items-center gap-1.5"
+            className="text-zinc-400 hover:text-white font-mono-code text-xs transition-colors flex items-center gap-1.5 uppercase tracking-wider"
           >
             <RefreshCw className="h-3 w-3" /> RESET
           </button>
         </div>
       </div>
 
-      {/* Main Chat Shell */}
-      <div className="rounded border border-zinc-800 bg-zinc-950 flex flex-col h-[65vh] overflow-hidden">
+      {/* Main Chat Stream (Unboxed Flat Layout) */}
+      <div className="flex flex-col h-[70vh]">
         {/* Suggestion Chips */}
-        <div className="p-3 border-b border-zinc-900 bg-black/60 flex items-center gap-2 overflow-x-auto select-none">
+        <div className="pb-4 border-b border-zinc-900 flex items-center gap-2 overflow-x-auto select-none">
           <span className="font-mono-code text-[10px] text-zinc-600 uppercase tracking-wider shrink-0">
             PROMPTS:
           </span>
@@ -130,7 +131,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
             <button
               key={idx}
               onClick={() => handleSendMessage(prompt)}
-              className="px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-white hover:text-white text-xs whitespace-nowrap transition-colors"
+              className="px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/50 text-zinc-300 hover:border-white hover:text-white text-xs whitespace-nowrap transition-colors"
             >
               {prompt}
             </button>
@@ -138,19 +139,19 @@ export function CompanionView({ chart }: CompanionViewProps) {
         </div>
 
         {/* Message Stream */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto py-6 space-y-6">
           {messages.map((msg) => (
             <div
               key={msg.id}
               className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[88%] rounded p-4 text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded p-4 text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-white text-black font-medium'
                     : msg.isError
-                    ? 'bg-red-950/40 border border-red-900 text-red-200'
-                    : 'bg-zinc-900 border border-zinc-800 text-zinc-200'
+                    ? 'bg-red-950/40 border border-red-900/80 text-red-200'
+                    : 'bg-zinc-900/90 border border-zinc-800/60 text-zinc-200'
                 }`}
               >
                 {msg.content}
@@ -162,7 +163,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
           ))}
 
           {loading && (
-            <div className="flex items-center gap-2 text-zinc-500 font-mono-code text-xs p-3">
+            <div className="flex items-center gap-2 text-zinc-500 font-mono-code text-xs py-3">
               <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
               Grounded AI companion is interpreting ephemeris context...
             </div>
@@ -176,7 +177,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
             e.preventDefault();
             handleSendMessage();
           }}
-          className="p-4 border-t border-zinc-800 bg-black flex gap-3"
+          className="pt-4 border-t border-zinc-900 flex gap-3"
         >
           <input
             type="text"
@@ -184,12 +185,12 @@ export function CompanionView({ chart }: CompanionViewProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 text-sm outline-none focus:border-white transition-colors"
+            className="flex-1 px-4 py-3 rounded bg-zinc-900/80 border border-zinc-800 text-white placeholder-zinc-500 text-sm outline-none focus:border-white transition-colors"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="px-6 py-2.5 rounded bg-white text-black font-bold font-mono-code text-xs uppercase tracking-wider hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            className="px-6 py-3 rounded bg-white text-black font-bold font-mono-code text-xs uppercase tracking-wider hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 shrink-0"
           >
             SEND <Send className="h-3 w-3" />
           </button>
