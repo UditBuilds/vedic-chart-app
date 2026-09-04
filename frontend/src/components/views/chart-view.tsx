@@ -59,85 +59,95 @@ export function ChartView({ chart }: ChartViewProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="space-y-10 md:space-y-12"
+      className="space-y-16"
     >
       {/* ========================================================================= */}
       {/* 1. THE BIG THREE HIGHLIGHT                                                */}
       {/* ========================================================================= */}
-      <section className="space-y-6">
+      <section className="space-y-4">
         <div>
           <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
             NATAL ANATOMY • WHOLE-SIGN SIDEREAL
           </span>
-          <h2 className="font-headline text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h2 className="font-headline text-lg sm:text-xl font-bold text-zinc-300 tracking-tight">
             The Big Three Blueprint
           </h2>
         </div>
 
-        {/* Vertically Stacked with Compact, Flowing Whitespace */}
-        <div className="space-y-6">
-          {bigThree.map((item, idx) => (
-            <div
-              key={item.role}
-              className={`space-y-2.5 ${idx !== 0 ? 'pt-5 border-t border-zinc-900' : ''}`}
-            >
-              {/* Placement Role + Element Inline */}
-              <div className="flex items-center gap-2 font-mono-code text-[11px]">
-                <span className="text-zinc-400 font-semibold uppercase tracking-widest">
-                  {item.role}
-                </span>
-                <span className="text-zinc-700 select-none">•</span>
-                <span className="text-zinc-500 uppercase tracking-wider">
-                  {item.element}
-                </span>
-              </div>
+        {/* Vertically Stacked with Strict Spacing Scale */}
+        <div className="space-y-8">
+          {bigThree.map((item, idx) => {
+            const isPrimary = idx === 0;
+            return (
+              <div
+                key={item.role}
+                className={`space-y-2 ${idx !== 0 ? 'pt-8 border-t border-zinc-900' : ''}`}
+              >
+                {/* Placement Role + Element Inline */}
+                <div className="flex items-center gap-2 font-mono-code text-[11px]">
+                  <span className="text-zinc-500 font-semibold uppercase tracking-widest">
+                    {item.role}
+                  </span>
+                  <span className="text-zinc-700 select-none">•</span>
+                  <span className="text-zinc-600 uppercase tracking-wider">
+                    {item.element}
+                  </span>
+                </div>
 
-              {/* Sign Title & Degree */}
-              <div>
-                <h3 className="font-headline text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">
-                  {item.sign}
-                </h3>
-                <p className="font-mono-code text-xs text-zinc-400 mt-0.5">
-                  {item.subtitle}
+                {/* Sign Title & Degree — Only Rising (idx 0) is Display + pure white */}
+                <div>
+                  <h3
+                    className={`font-headline tracking-tight leading-tight ${
+                      isPrimary
+                        ? 'text-4xl sm:text-5xl font-extrabold text-white'
+                        : 'text-xl sm:text-2xl font-bold text-zinc-300'
+                    }`}
+                  >
+                    {item.sign}
+                  </h3>
+                  <p className="font-mono-code text-xs text-zinc-500 mt-1">
+                    {item.subtitle}
+                  </p>
+                </div>
+
+                {/* Archetypal Description */}
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
+                  {item.desc}
                 </p>
+
+                {/* Essence line appears once only on the Rising sign */}
+                {item.roleKey === 'Rising' && SIGN_INFO[item.sign]?.essence && (
+                  <p className="font-mono-code text-[11px] text-zinc-500 tracking-wide pt-0.5">
+                    <span className="text-zinc-500 uppercase tracking-wider font-semibold">ESSENCE:</span>{' '}
+                    <span className="text-zinc-400">{SIGN_INFO[item.sign].essence}</span>
+                  </p>
+                )}
               </div>
-
-              {/* Archetypal Description */}
-              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
-                {item.desc}
-              </p>
-
-              {/* Essence line appears once only on the Rising sign */}
-              {item.roleKey === 'Rising' && SIGN_INFO[item.sign]?.essence && (
-                <p className="font-mono-code text-[11px] text-zinc-500 tracking-wide pt-0.5">
-                  <span className="text-zinc-400 uppercase tracking-wider">ESSENCE:</span> {SIGN_INFO[item.sign].essence}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       {/* ========================================================================= */}
       {/* 2. CURRENT LIFE CHAPTER (VIMSHOTTARI DASHA)                               */}
       {/* ========================================================================= */}
-      <section className="pt-8 border-t border-zinc-900 space-y-4">
+      <section className="pt-16 border-t border-zinc-900 space-y-4">
         <div className="space-y-1">
           <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
             CURRENT LIFE CHAPTER
           </span>
           <div className="flex items-baseline gap-2 flex-wrap">
-            <h2 className="font-headline text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="font-headline text-lg sm:text-xl font-bold text-zinc-300 tracking-tight">
               {chart.dasha?.current_mahadasha?.lord} Mahadasha
             </h2>
-            <span className="font-mono-code text-xs text-zinc-400">
+            <span className="font-mono-code text-xs text-zinc-500">
               ({chart.dasha?.current_mahadasha?.start} → {chart.dasha?.current_mahadasha?.end})
             </span>
           </div>
         </div>
 
-        <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
-          The overarching era is governed by <span className="text-white font-semibold">{chart.dasha?.current_mahadasha?.lord}</span> ({PLANET_DOMAINS[chart.dasha?.current_mahadasha?.lord]?.domain || 'Karmic Growth'}). You are cultivating long-term mastery in this life area.
+        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
+          The overarching era is governed by <span className="text-zinc-200 font-semibold">{chart.dasha?.current_mahadasha?.lord}</span> ({PLANET_DOMAINS[chart.dasha?.current_mahadasha?.lord]?.domain || 'Karmic Growth'}). You are cultivating long-term mastery in this life area.
         </p>
 
         {/* Visual Progress Bar */}
@@ -151,17 +161,17 @@ export function ChartView({ chart }: ChartViewProps) {
       {/* ========================================================================= */}
       {/* 3. PLANETARY BLUEPRINT (9 GRAHAS)                                         */}
       {/* ========================================================================= */}
-      <section className="pt-8 border-t border-zinc-900 space-y-4">
+      <section className="pt-16 border-t border-zinc-900 space-y-4">
         <div>
           <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
             NATAL BLUEPRINT • 9 GRAHAS
           </span>
-          <h2 className="font-headline text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h2 className="font-headline text-lg sm:text-xl font-bold text-zinc-300 tracking-tight">
             Planetary Placements & Life Areas
           </h2>
         </div>
 
-        {/* Single-Baseline Planetary Rows — Uniform structure across all 9 rows */}
+        {/* Single-Baseline Planetary Rows — Stepped down from Rising sign */}
         <div className="divide-y divide-zinc-900 border-y border-zinc-900">
           {chart.planets.map((planet) => {
             const domainInfo = PLANET_DOMAINS[planet.name];
@@ -169,14 +179,14 @@ export function ChartView({ chart }: ChartViewProps) {
             if (typeof planet.degree === 'number') {
               details.push({
                 text: `${planet.degree.toFixed(2)}°${planet.retrograde ? ' ℞' : ''}`,
-                className: 'text-zinc-300',
+                className: 'text-zinc-400',
               });
             }
             const houseLabel = formatHouse(planet.house);
             if (houseLabel) {
               details.push({
                 text: houseLabel,
-                className: 'text-zinc-400',
+                className: 'text-zinc-500',
               });
             }
             if (planet.nakshatra) {
@@ -191,11 +201,11 @@ export function ChartView({ chart }: ChartViewProps) {
                 {/* Line 1: Single consistent baseline reading left-to-right without overflow */}
                 <div className="flex items-baseline gap-x-2 text-sm flex-wrap">
                   <div className="flex items-baseline gap-1.5 shrink-0">
-                    <span className="font-headline font-bold text-white">
+                    <span className="font-headline font-bold text-zinc-200">
                       {planet.name}
                     </span>
-                    <span className="text-zinc-500 text-xs font-serif-poetic">in</span>
-                    <span className="font-headline font-bold text-white">
+                    <span className="text-zinc-600 text-xs font-serif-poetic">in</span>
+                    <span className="font-headline font-bold text-zinc-200">
                       {planet.sign}
                     </span>
                   </div>
@@ -218,7 +228,7 @@ export function ChartView({ chart }: ChartViewProps) {
 
                 {/* Line 2: Category domain and role description */}
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  <span className="font-mono-code text-[10px] text-zinc-500 uppercase tracking-wider mr-2 font-semibold">
+                  <span className="font-mono-code text-[10px] text-zinc-600 uppercase tracking-wider mr-2 font-semibold">
                     {domainInfo?.domain || 'LIFE AREA'}
                   </span>
                   {domainInfo?.archetypalRole}.
@@ -232,24 +242,24 @@ export function ChartView({ chart }: ChartViewProps) {
       {/* ========================================================================= */}
       {/* 4. TRADITIONAL KUNDLI SVG (COLLAPSIBLE)                                    */}
       {/* ========================================================================= */}
-      <section className="pt-8 border-t border-zinc-900 space-y-4">
+      <section className="pt-16 border-t border-zinc-900 space-y-4">
         <button
           onClick={() => setKundliOpen(!kundliOpen)}
           className="w-full py-3 text-left flex items-center justify-between group transition-colors"
         >
           <div className="flex items-center gap-2.5">
-            <Compass className="h-4 w-4 text-zinc-400 group-hover:text-white transition-colors" />
-            <span className="font-mono-code text-xs font-bold text-zinc-300 group-hover:text-white uppercase tracking-wider transition-colors">
+            <Compass className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+            <span className="font-mono-code text-xs font-bold text-zinc-400 group-hover:text-zinc-200 uppercase tracking-wider transition-colors">
               {kundliOpen ? 'Hide Traditional Vedic Kundli (D1)' : 'View Traditional Vedic Kundli (D1)'}
             </span>
           </div>
-          <span className="font-mono-code text-xs text-zinc-500 group-hover:text-white">
+          <span className="font-mono-code text-xs text-zinc-600 group-hover:text-zinc-400">
             {kundliOpen ? '↑' : '↓'}
           </span>
         </button>
 
         {kundliOpen && (
-          <div className="pt-3 border-t border-zinc-900">
+          <div className="pt-4 border-t border-zinc-900">
             <KundliRenderer chart={chart} />
           </div>
         )}

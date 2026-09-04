@@ -119,13 +119,13 @@ export default function App() {
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-900 font-mono-code text-xs">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-zinc-500 uppercase tracking-wider">MOMENT:</span>
-                <span className="text-white font-semibold">{birthData.city_name || 'Custom Location'}</span>
-                <span className="text-zinc-500">({birthData.date} • {birthData.time})</span>
+                <span className="text-zinc-600 uppercase tracking-wider">MOMENT:</span>
+                <span className="text-zinc-300 font-semibold">{birthData.city_name || 'Custom Location'}</span>
+                <span className="text-zinc-600">({birthData.date} • {birthData.time})</span>
               </div>
               <button
                 onClick={() => setIsBirthModalOpen(true)}
-                className="text-zinc-400 hover:text-white transition-colors text-[11px] font-bold tracking-wider uppercase underline underline-offset-4 decoration-zinc-800 hover:decoration-white"
+                className="text-zinc-500 hover:text-white transition-colors text-[11px] font-bold tracking-wider uppercase underline underline-offset-4 decoration-zinc-800 hover:decoration-white"
               >
                 Recalculate →
               </button>

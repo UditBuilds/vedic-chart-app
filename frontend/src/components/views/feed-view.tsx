@@ -21,21 +21,21 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="space-y-10 md:space-y-12"
+      className="space-y-16"
     >
-      {/* 1. Daily Poetic Headline Block */}
+      {/* 1. Daily Poetic Headline Block — Sole Primary Element on Feed */}
       <div className="space-y-4">
         <div className="flex items-baseline gap-2 flex-wrap font-mono-code text-[11px]">
           <span className="text-zinc-500 uppercase tracking-widest font-semibold">
             TODAY AT A GLANCE — {todayDate}
           </span>
           <span className="text-zinc-700 select-none">•</span>
-          <span className="text-zinc-400 font-semibold uppercase tracking-wider">
+          <span className="text-zinc-500 font-semibold uppercase tracking-wider">
             ☽ MOON IN {chart.moon_rashi?.toUpperCase() || 'GEMINI'}
           </span>
         </div>
 
-        <h1 className="font-headline text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+        <h1 className="font-headline text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
           {wisdom.headline}
         </h1>
 
@@ -45,21 +45,21 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
       </div>
 
       {/* 2. DO / DON'T Continuous Flowing Guidance */}
-      <section className="pt-8 border-t border-zinc-900 space-y-6">
+      <section className="pt-16 border-t border-zinc-900 space-y-4">
         <div>
           <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
             DAILY ALIGNMENT
           </span>
-          <h2 className="font-headline text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h2 className="font-headline text-lg sm:text-xl font-bold text-zinc-300 tracking-tight">
             Harmonies & Frictions
           </h2>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* DO Section */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="font-mono-code text-xs font-bold text-white uppercase tracking-widest">
+              <span className="font-mono-code text-xs font-bold text-zinc-300 uppercase tracking-widest">
                 DO
               </span>
               <span className="text-zinc-700 font-mono-code text-xs select-none">/</span>
@@ -70,7 +70,7 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
             <ul className="space-y-2 font-sans text-sm text-zinc-300">
               {wisdom.dos.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-3 leading-relaxed">
-                  <span className="text-white font-mono-code font-bold select-none text-sm leading-none mt-1">—</span>
+                  <span className="text-zinc-400 font-mono-code font-bold select-none text-sm leading-none mt-1">—</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -81,7 +81,7 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
           <div className="h-px w-full bg-zinc-900" />
 
           {/* DON'T Section */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="font-mono-code text-xs font-bold text-zinc-400 uppercase tracking-widest">
                 DON&apos;T
@@ -94,7 +94,7 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
             <ul className="space-y-2 font-sans text-sm text-zinc-400">
               {wisdom.donts.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-3 leading-relaxed">
-                  <span className="text-zinc-500 font-mono-code select-none text-xs leading-none mt-1">✕</span>
+                  <span className="text-zinc-600 font-mono-code select-none text-xs leading-none mt-1">✕</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -104,12 +104,12 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
       </section>
 
       {/* 3. Today's Celestial Horizon — stacked vertically */}
-      <section className="pt-8 border-t border-zinc-900 space-y-5">
+      <section className="pt-16 border-t border-zinc-900 space-y-4">
         <div>
           <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">
             CURRENT SKY • WHOLE-SIGN GOCHAR TRANSITS
           </span>
-          <h2 className="font-headline text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h2 className="font-headline text-lg sm:text-xl font-bold text-zinc-300 tracking-tight">
             Today&apos;s Celestial Horizon
           </h2>
         </div>
@@ -118,15 +118,15 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
           {wisdom.horizon.map((h, idx) => (
             <div key={idx} className="py-3.5 space-y-1">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-mono-code text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">
+                <span className="font-mono-code text-[10px] text-zinc-600 uppercase tracking-wider font-semibold">
                   {h.domain}
                 </span>
                 <span className="text-zinc-700 select-none">•</span>
-                <span className="font-headline text-sm font-bold text-white">
+                <span className="font-headline text-sm font-bold text-zinc-200">
                   {h.planet}
                 </span>
-                <span className="text-zinc-500 text-xs font-serif-poetic">in</span>
-                <span className="font-headline text-sm font-bold text-white">
+                <span className="text-zinc-600 text-xs font-serif-poetic">in</span>
+                <span className="font-headline text-sm font-bold text-zinc-200">
                   {h.sign}
                 </span>
               </div>
@@ -139,11 +139,11 @@ export function FeedView({ chart, onNavigateTab }: FeedViewProps) {
       </section>
 
       {/* 4. AI Companion Teaser */}
-      <div className="pt-8 border-t border-zinc-900 space-y-2">
+      <div className="pt-16 border-t border-zinc-900 space-y-2">
         <span className="font-mono-code text-[11px] text-zinc-500 uppercase tracking-widest font-semibold block">
           INTERPRETIVE INTELLIGENCE
         </span>
-        <h3 className="font-headline text-lg sm:text-xl font-bold text-white tracking-tight">
+        <h3 className="font-headline text-lg sm:text-xl font-bold text-zinc-300 tracking-tight">
           Consult Your Grounded Vedic Companion
         </h3>
         <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">

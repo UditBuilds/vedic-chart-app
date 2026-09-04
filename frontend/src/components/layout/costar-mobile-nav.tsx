@@ -25,11 +25,11 @@ export function CostarMobileNav({ activeTab, onSelectTab }: MobileNavProps) {
           <button
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded font-mono-code text-[10px] font-bold tracking-wider transition-colors ${
-              isActive ? 'text-white' : 'text-zinc-500'
+            className={`flex flex-col items-center gap-1 py-1 px-3 font-mono-code text-[10px] tracking-wider transition-colors ${
+              isActive ? 'text-white font-bold' : 'text-zinc-600 font-normal'
             }`}
           >
-            <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-zinc-500'}`} />
+            <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-zinc-600'}`} />
             <span>{tab.label}</span>
           </button>
         );

@@ -36,17 +36,17 @@ export function CostarHeader({ activeTab, onSelectTab, onOpenBirthModal, chart }
       </div>
 
       {/* Nav Tabs */}
-      <nav className="hidden md:flex items-center gap-1 p-1 rounded border border-zinc-900 bg-zinc-950">
+      <nav className="hidden md:flex items-center gap-6">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`px-3.5 py-1.5 rounded font-mono-code text-xs font-bold tracking-wider transition-all uppercase ${
+              className={`font-mono-code text-xs tracking-widest transition-colors uppercase ${
                 isActive
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-zinc-500 hover:text-white'
+                  ? 'text-white font-bold'
+                  : 'text-zinc-600 font-normal hover:text-zinc-300'
               }`}
             >
               {tab.label}
@@ -59,7 +59,7 @@ export function CostarHeader({ activeTab, onSelectTab, onOpenBirthModal, chart }
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenBirthModal}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-zinc-800 bg-zinc-950/80 hover:border-zinc-600 hover:bg-zinc-900 text-xs font-mono-code text-zinc-300 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-mono-code text-zinc-500 hover:text-zinc-300 transition-colors"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
           <span className="truncate max-w-[160px] sm:max-w-[200px]">{profileLabel}</span>

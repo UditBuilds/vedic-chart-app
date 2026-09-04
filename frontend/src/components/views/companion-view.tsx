@@ -131,7 +131,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
             <button
               key={idx}
               onClick={() => handleSendMessage(prompt)}
-              className="px-3 py-1 rounded-full border border-zinc-800/80 bg-zinc-900/50 text-zinc-300 hover:border-white hover:text-white text-xs whitespace-nowrap transition-colors"
+              className="px-3 py-1 rounded-full border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 text-xs whitespace-nowrap transition-colors"
             >
               {prompt}
             </button>
@@ -151,7 +151,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
                     ? 'bg-white text-black font-medium'
                     : msg.isError
                     ? 'bg-red-950/40 border border-red-900/80 text-red-200'
-                    : 'bg-zinc-900/90 border border-zinc-800/60 text-zinc-200'
+                    : 'bg-zinc-900 border border-zinc-800 text-zinc-300'
                 }`}
               >
                 {msg.content}
@@ -185,7 +185,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
-            className="flex-1 px-4 py-3 rounded bg-zinc-900/80 border border-zinc-800 text-white placeholder-zinc-500 text-sm outline-none focus:border-white transition-colors"
+            className="flex-1 px-4 py-3 rounded bg-zinc-950 border border-zinc-800 text-white placeholder-zinc-600 text-sm outline-none focus:border-zinc-500 transition-colors"
           />
           <button
             type="submit"
