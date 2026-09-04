@@ -56,6 +56,24 @@ class AstrologyApiClient {
     }
   }
 
+  private extractError(err: any): Error {
+    const backendError = err.response?.data?.error;
+    if (backendError) {
+      const errorMsg = backendError.message || `Service error (${backendError.type})`;
+      const enhancedError: any = new Error(errorMsg);
+      enhancedError.type = backendError.type;
+      enhancedError.status = err.response?.status;
+      return enhancedError;
+    }
+    if (!err.response) {
+      const networkError: any = new Error(err.message || 'Cannot reach server. Check network or backend connection.');
+      networkError.type = 'network_error';
+      networkError.status = 0;
+      return networkError;
+    }
+    return err;
+  }
+
   public async computeChart(birth: BirthData): Promise<ChartData> {
     try {
       const res = await this.client.post<ChartData>('/api/v1/chart', {
@@ -67,55 +85,70 @@ class AstrologyApiClient {
       });
       return res.data;
     } catch (err: any) {
-      const backendError = err.response?.data?.error;
-      if (backendError) {
-        const errorMsg = backendError.message || `Calculation error (${backendError.type})`;
-        const enhancedError: any = new Error(errorMsg);
-        enhancedError.type = backendError.type;
-        enhancedError.status = err.response.status;
-        throw enhancedError;
-      }
-      throw err;
+      throw this.extractError(err);
     }
   }
 
   public async sendChatMessage(birth: BirthData, message: string, userId = 'default_user'): Promise<{ reply: string; raw: any }> {
-    const res = await this.client.post('/api/v1/chat', {
-      birth: {
-        date: birth.date,
-        time: birth.time,
-        lat: birth.lat,
-        lon: birth.lon,
-        tz_offset: birth.tz_offset,
-      },
-      message,
-      user_id: userId,
-    });
-    return {
-      reply: res.data.reply || res.data.message || (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)),
-      raw: res.data,
-    };
+    try {
+      const res = await this.client.post('/api/v1/chat', {
+        birth: {
+          date: birth.date,
+          time: birth.time,
+          lat: birth.lat,
+          lon: birth.lon,
+          tz_offset: birth.tz_offset,
+        },
+        message,
+        user_id: userId,
+      });
+      return {
+        reply: res.data.reply || res.data.message || (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)),
+        raw: res.data,
+      };
+    } catch (err: any) {
+      throw this.extractError(err);
+    }
   }
 
   public async getPromptFacts(birth: BirthData, userId = 'default_user'): Promise<{ prompt: string }> {
-    const res = await this.client.post('/api/v1/chat/prompt', {
-      birth: {
-        date: birth.date,
-        time: birth.time,
-        lat: birth.lat,
-        lon: birth.lon,
-        tz_offset: birth.tz_offset,
-      },
-      user_id: userId,
-    });
-    return res.data;
+    try {
+      const res = await this.client.post('/api/v1/chat/prompt', {
+        birth: {
+          date: birth.date,
+          time: birth.time,
+          lat: birth.lat,
+          lon: birth.lon,
+          tz_offset: birth.tz_offset,
+        },
+        user_id: userId,
+      });
+      return res.data;
+    } catch (err: any) {
+      throw this.extractError(err);
+    }
   }
 
-  public async resetChatHistory(userId = 'default_user'): Promise<any> {
-    const res = await this.client.post('/api/v1/chat/reset', {
-      user_id: userId,
-    });
-    return res.data;
+  public async resetChatHistory(userId = 'default_user'): Promise<{ status: string; user_id: string; cleared: number }> {
+    try {
+      const res = await this.client.post('/api/v1/chat/reset', {
+        user_id: userId,
+      });
+      return res.data;
+    } catch (err: any) {
+      throw this.extractError(err);
+    }
+  }
+
+  public async getChatHistory(userId = 'default_user'): Promise<{ user_id: string; messages: Array<{ role: string; content: string; created_at?: string }> }> {
+    try {
+      const res = await this.client.get('/api/v1/chat/history', {
+        params: { user_id: userId },
+      });
+      return res.data;
+    } catch (err: any) {
+      throw this.extractError(err);
+    }
   }
 
   // Dashboard mock helpers

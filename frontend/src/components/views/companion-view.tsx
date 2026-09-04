@@ -19,6 +19,42 @@ const PROMPT_SUGGESTIONS = [
   'What are the strengths and friction points of my Big Three?',
 ];
 
+function formatCompanionError(err: any): string {
+  const type = err.type || err.response?.data?.error?.type;
+  const status = err.status || err.response?.status;
+  const rawMsg = err.message || err.response?.data?.error?.message;
+
+  if (type === 'missing_api_key' || status === 503) {
+    return `Configuration issue: ${rawMsg || 'GROQ_API_KEY is not set in the backend environment. Export GROQ_API_KEY before starting the chat.'}`;
+  }
+
+  if (type === 'ephemeris_range') {
+    return `Ephemeris range error: ${rawMsg || 'The birth date falls outside the Swiss Ephemeris calculation range.'}`;
+  }
+
+  if (type === 'dasha_range') {
+    return `Dasha cycle error: ${rawMsg || 'The date falls outside the 120-year Vimshottari dasha cycle for this nativity.'}`;
+  }
+
+  if (type === 'inference_failed' || (status === 502 && type !== 'proxy_error')) {
+    return `AI inference failed: ${rawMsg || 'The language model failed to complete the request. Please try again.'}`;
+  }
+
+  if (type === 'invalid_request' || status === 400) {
+    return `Invalid request: ${rawMsg || 'The request was malformed or missing required parameters.'}`;
+  }
+
+  if (type === 'calculation_failed' || status === 500) {
+    return `Chart calculation error: ${rawMsg || 'Astrological calculation failed.'}`;
+  }
+
+  if (type === 'proxy_error' || type === 'network_error' || status === 0 || !status) {
+    return 'Network failure: Unable to reach the Vedic calculation engine. Please ensure the backend is running on port 5000.';
+  }
+
+  return rawMsg || 'An unexpected error occurred while communicating with the companion service.';
+}
+
 export function CompanionView({ chart }: CompanionViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -66,7 +102,7 @@ export function CompanionView({ chart }: CompanionViewProps) {
         id: `err-${Date.now()}`,
         role: 'assistant',
         isError: true,
-        content: `Could not reach the AI interpretation engine: ${err.message || 'Please check backend status.'}`,
+        content: formatCompanionError(err),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
