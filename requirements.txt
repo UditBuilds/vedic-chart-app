@@ -12,6 +12,7 @@
 # deliberately omitted -- the calculation modules import cleanly without them.
 
 Flask==3.1.2
+python-dotenv==1.2.3
 
 # Inference for the interpretation layer. Free tier; needs GROQ_API_KEY in the
 # environment. Nothing in the calculation service touches this -- the chart
