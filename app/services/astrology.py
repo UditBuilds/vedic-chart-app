@@ -78,6 +78,10 @@ class CalculationError(AstrologyError):
     """The underlying engine failed to produce a chart for otherwise valid input."""
 
 
+class DashaRangeError(AstrologyError):
+    """The requested date falls outside the 120-year Vimshottari dasha cycle for this nativity."""
+
+
 # --------------------------------------------------------------------------
 # Constants
 # --------------------------------------------------------------------------
@@ -525,10 +529,12 @@ def _interval_containing(intervals: list[_Interval], moment_jd: float, label: st
     for interval in intervals:
         if interval[2] <= moment_jd < interval[3]:
             return interval
-    raise CalculationError(
-        f"requested date falls outside the 120-year Vimshottari {label} cycle "
-        f"for this nativity; the cycle runs from JD {intervals[0][2]:.5f} to "
-        f"{intervals[-1][3]:.5f}"
+    start_date = _jd_to_date(intervals[0][2]).isoformat()
+    end_date = _jd_to_date(intervals[-1][3]).isoformat()
+    target_date = _jd_to_date(moment_jd).isoformat()
+    raise DashaRangeError(
+        f"the person's 120-year Vimshottari dasha cycle runs from {start_date} to {end_date} "
+        f"and does not cover {target_date}"
     )
 
 

@@ -115,6 +115,27 @@ def test_chart_is_cached_and_reused(connection) -> None:
     assert first == second
 
 
+def test_ensure_chart_recomputes_when_birth_data_changes(connection) -> None:
+    """Same user_id, two different birth dates submitted in sequence --
+    confirm the second call returns the second birth's chart, not a cached one from the first."""
+    user_id = "u_recompute"
+    birth_1 = TEST_BIRTH
+    birth_2 = BirthData(
+        date=_dt.date(1990, 1, 1),
+        time=_dt.time(6, 0, 0),
+        lat=28.6139,
+        lon=77.2090,
+        tz_offset=5.5,
+    )
+    chart_1 = chat_service.ensure_chart(connection, user_id, birth_1)
+    chart_2 = chat_service.ensure_chart(connection, user_id, birth_2)
+
+    assert chart_1["ascendant"]["sign"] == "Virgo"
+    assert chart_2["ascendant"]["sign"] == "Scorpio"
+    assert chart_2["input_echo"]["date"] == "1990-01-01"
+    assert chart_2["input_echo"]["time"] == "06:00:00"
+
+
 def test_cached_chart_never_stores_transits(connection) -> None:
     """Storing a transit snapshot would mean serving a stale sky later."""
     chat_service.ensure_chart(connection, "u1", TEST_BIRTH)

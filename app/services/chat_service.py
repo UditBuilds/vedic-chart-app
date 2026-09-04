@@ -356,12 +356,22 @@ def birth_from_row(row: dict[str, Any]) -> BirthData:
 
 
 def ensure_chart(
-    connection: sqlite3.Connection, user_id: str, birth: BirthData
+    connection: sqlite3.Connection,
+    user_id: str,
+    birth: BirthData,
 ) -> dict[str, Any]:
     """Return the cached natal chart, computing and storing it on first use."""
     stored = db.load_chart(connection, user_id)
     if stored is not None:
-        return stored["chart"]
+        b = stored.get("birth", {})
+        if (
+            b.get("date") == birth.date.isoformat()
+            and b.get("time") == birth.time.isoformat()
+            and b.get("lat") == birth.lat
+            and b.get("lon") == birth.lon
+            and b.get("tz_offset") == birth.tz_offset
+        ):
+            return stored["chart"]
     chart = calculate_chart(birth)
     db.save_chart(connection, user_id, birth, chart)
     saved = db.load_chart(connection, user_id)
