@@ -18,6 +18,7 @@ from app.services.astrology import (
     AYANAMSA_NAME,
     AstrologyError,
     CalculationError,
+    DashaRangeError,
     EphemerisRangeError,
     InvalidBirthDataError,
     calculate_chart,
@@ -68,6 +69,8 @@ def chart() -> tuple[Any, int]:
         # Client asked for a moment we cannot compute. Say so plainly rather
         # than returning a chart that would be quietly wrong.
         return _error(str(exc), 422, "ephemeris_range")
+    except DashaRangeError as exc:
+        return _error(str(exc), 422, "dasha_range")
     except InvalidBirthDataError as exc:
         return _error(str(exc), 400, "invalid_request")
     except CalculationError as exc:
@@ -124,6 +127,8 @@ def chat() -> tuple[Any, int]:
         return _error(str(exc), 502, "inference_failed")
     except EphemerisRangeError as exc:
         return _error(str(exc), 422, "ephemeris_range")
+    except DashaRangeError as exc:
+        return _error(str(exc), 422, "dasha_range")
     except AstrologyError as exc:
         logger.exception("astrology error during chat turn")
         return _error(str(exc), 500, "calculation_failed")
@@ -165,6 +170,8 @@ def chat_prompt() -> tuple[Any, int]:
         birth = parse_birth_data(birth_payload)
     except RequestValidationError as exc:
         return _error(str(exc), 400, "invalid_request")
+    except EphemerisRangeError as exc:
+        return _error(str(exc), 422, "ephemeris_range")
 
     user_id = str(payload.get("user_id", db.DEFAULT_USER_ID)).strip() or db.DEFAULT_USER_ID
     connection = db.connect()
@@ -174,6 +181,10 @@ def chat_prompt() -> tuple[Any, int]:
         transits_data = calculate_transits(birth, chart_data["ascendant"]["sign"])
         history = db.recent_messages(connection, user_id)
         prompt = chat_service.build_system_prompt(chart_data, transits_data, history)
+    except EphemerisRangeError as exc:
+        return _error(str(exc), 422, "ephemeris_range")
+    except DashaRangeError as exc:
+        return _error(str(exc), 422, "dasha_range")
     except AstrologyError as exc:
         return _error(str(exc), 500, "calculation_failed")
 

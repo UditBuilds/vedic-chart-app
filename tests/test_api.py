@@ -110,6 +110,26 @@ def test_date_outside_the_ephemeris_returns_422_naming_the_range(client) -> None
     assert "2999" in message
 
 
+def test_birth_date_whose_dasha_cycle_has_ended_returns_422_dasha_range(client) -> None:
+    """A historical date whose 120-year Vimshottari cycle has ended returns 422 dasha_range."""
+    response = client.post("/api/v1/chart", json={**VALID_PAYLOAD, "date": "1200-01-01"})
+    assert response.status_code == 422
+    data = response.get_json()
+    assert data["error"]["type"] == "dasha_range"
+    assert "120-year Vimshottari dasha cycle" in data["error"]["message"]
+    assert "1199-04-21" in data["error"]["message"]
+    assert "1319-04-23" in data["error"]["message"]
+
+
+def test_birth_date_119_years_ago_computes_normally(client) -> None:
+    """A birth date ~119 years ago whose cycle is still active computes normally with 200."""
+    response = client.post("/api/v1/chart", json={**VALID_PAYLOAD, "date": "1908-08-01"})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "dasha" in data
+    assert data["dasha"]["current_mahadasha"]["lord"] != ""
+
+
 def test_non_json_body_is_rejected(client) -> None:
     response = client.post("/api/v1/chart", data="not json",
                            content_type="text/plain")

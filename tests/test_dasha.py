@@ -239,8 +239,28 @@ def test_query_outside_the_cycle_fails_loudly(intervals) -> None:
     """Beyond 120 years there is no answer; we must say so, not invent one."""
     mahadashas, _ = intervals
     past_end = svc._jd_to_date(mahadashas[-1][3]) + _dt.timedelta(days=365)
-    with pytest.raises(svc.CalculationError, match="outside the 120-year"):
+    with pytest.raises(svc.DashaRangeError, match="120-year Vimshottari dasha cycle"):
         calculate_chart(REFERENCE_BIRTH, as_of=past_end)
+
+
+def test_dasha_cycle_boundary_cases(intervals) -> None:
+    """Boundary test: 1 day before the cycle closes succeeds; 1 day after raises DashaRangeError."""
+    mahadashas, _ = intervals
+    end_date = svc._jd_to_date(mahadashas[-1][3])
+
+    # 1 day before cycle closes: inside the cycle, must succeed
+    before_end = end_date - _dt.timedelta(days=1)
+    chart_before = calculate_chart(REFERENCE_BIRTH, as_of=before_end)
+    assert chart_before["dasha"]["current_mahadasha"] is not None
+
+    # 1 day after cycle closes: outside the cycle, must raise DashaRangeError
+    after_end = end_date + _dt.timedelta(days=1)
+    with pytest.raises(svc.DashaRangeError) as exc_info:
+        calculate_chart(REFERENCE_BIRTH, as_of=after_end)
+    error_msg = str(exc_info.value)
+    assert "120-year Vimshottari dasha cycle" in error_msg
+    assert str(end_date) in error_msg
+    assert str(after_end) in error_msg
 
 
 # -------------------------------------------------------------- antardashas

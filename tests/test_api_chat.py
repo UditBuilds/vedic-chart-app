@@ -58,10 +58,17 @@ def test_chat_endpoint_validates_input(client) -> None:
     assert res3.status_code == 400
     assert "birth" in res3.get_json()["error"]["message"]
 
-    # 4. Out of range date
+    # 4. Out of range date (ephemeris range)
     invalid_birth = dict(VALID_BIRTH, date="3500-01-01")
     res4 = client.post("/api/v1/chat", json={"birth": invalid_birth, "message": "hello"})
     assert res4.status_code == 422
+    assert res4.get_json()["error"]["type"] == "ephemeris_range"
+
+    # 5. Out of range date (dasha range - historical date whose cycle ended)
+    past_dasha_birth = dict(VALID_BIRTH, date="1200-01-01")
+    res5 = client.post("/api/v1/chat", json={"birth": past_dasha_birth, "message": "hello"})
+    assert res5.status_code == 422
+    assert res5.get_json()["error"]["type"] == "dasha_range"
 
 
 def test_chat_endpoint_with_mocked_llm(client) -> None:
@@ -110,3 +117,15 @@ def test_chat_prompt_endpoint(client) -> None:
     assert "FACTS:" in body["prompt"]
     assert "Natal:" in body["prompt"]
     assert "Ascendant (lagna): Virgo" in body["prompt"]
+
+    # Historical date whose dasha cycle ended returns 422 dasha_range
+    past_dasha_birth = dict(VALID_BIRTH, date="1200-01-01")
+    res_past = client.post("/api/v1/chat/prompt", json={"birth": past_dasha_birth})
+    assert res_past.status_code == 422
+    assert res_past.get_json()["error"]["type"] == "dasha_range"
+
+    # Future date beyond ephemeris returns 422 ephemeris_range
+    future_birth = dict(VALID_BIRTH, date="3500-01-01")
+    res_future = client.post("/api/v1/chat/prompt", json={"birth": future_birth})
+    assert res_future.status_code == 422
+    assert res_future.get_json()["error"]["type"] == "ephemeris_range"
